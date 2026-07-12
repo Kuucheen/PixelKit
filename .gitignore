@@ -1,0 +1,13 @@
+/target/
+/vendor/
+/.flatpak-builder/
+/build-dir/
+/dist/
+/AppDir/
+/.idea/
+*.AppImage
+*.deb
+*.rpm
+*.pkg.tar.*
+debug*.list
+elfbins.list

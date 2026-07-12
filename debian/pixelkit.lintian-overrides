@@ -1,0 +1,3 @@
+# The release profile already strips Rust symbols; a separate debug package is
+# intentionally omitted for this small desktop utility.
+pixelkit: no-dbg-package

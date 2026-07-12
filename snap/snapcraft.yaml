@@ -1,0 +1,47 @@
+name: pixelkit
+base: core24
+version: '0.1.0'
+summary: Native Linux color picker and screen ruler
+description: |
+  PixelKit provides a magnified system-wide color picker, color editor, and
+  screen ruler. X11 is captured directly; Wayland uses freedesktop portals.
+grade: stable
+confinement: strict
+license: MIT
+website: https://github.com/Kuucheen/PixelKit
+issues: https://github.com/Kuucheen/PixelKit/issues
+apps:
+  pixelkit:
+    command: bin/pixelkit
+    extensions: [gnome]
+    desktop: share/applications/io.github.Kuucheen.PixelKit.desktop
+    plugs: [desktop, desktop-legacy, wayland, x11, opengl, home]
+  daemon:
+    command: bin/pixelkit daemon
+    extensions: [gnome]
+    plugs: [desktop, desktop-legacy, wayland, x11, opengl]
+parts:
+  pixelkit:
+    plugin: rust
+    source: .
+    rust-channel: '1.92'
+    build-packages:
+      - gcc
+      - libx11-dev
+      - libxcb1-dev
+      - libwayland-dev
+      - libxkbcommon-dev
+    stage-packages:
+      - libgl1
+      - libx11-6
+      - libxcb1
+      - libwayland-client0
+      - libxkbcommon0
+    override-build: |
+      craftctl default
+      install -Dm644 packaging/linux/io.github.Kuucheen.PixelKit.desktop "$CRAFT_PART_INSTALL/share/applications/io.github.Kuucheen.PixelKit.desktop"
+      install -Dm644 packaging/linux/io.github.Kuucheen.PixelKit.metainfo.xml "$CRAFT_PART_INSTALL/share/metainfo/io.github.Kuucheen.PixelKit.metainfo.xml"
+      install -Dm644 packaging/linux/io.github.Kuucheen.PixelKit.svg "$CRAFT_PART_INSTALL/share/icons/hicolor/scalable/apps/io.github.Kuucheen.PixelKit.svg"
+      install -Dm644 packaging/linux/io.github.Kuucheen.PixelKit.png "$CRAFT_PART_INSTALL/share/icons/hicolor/128x128/apps/io.github.Kuucheen.PixelKit.png"
+      install -Dm644 LICENSE "$CRAFT_PART_INSTALL/share/licenses/pixelkit/LICENSE"
+      sed -i 's|Exec=pixelkit|Exec=pixelkit.pixelkit|' "$CRAFT_PART_INSTALL/share/applications/io.github.Kuucheen.PixelKit.desktop"

@@ -1,0 +1,37 @@
+# Maintainer: PixelKit contributors <70746714+Kuucheen@users.noreply.github.com>
+pkgname=pixelkit
+pkgver=0.1.0
+pkgrel=3
+pkgdesc='Native Linux color picker and screen ruler'
+arch=('x86_64' 'aarch64')
+url='https://github.com/Kuucheen/PixelKit'
+license=('MIT')
+depends=('libx11' 'libxcb' 'libxkbcommon' 'wayland' 'mesa' 'xdg-desktop-portal')
+makedepends=('cargo' 'git')
+optdepends=(
+  'xdg-desktop-portal-gtk: portal backend for GTK desktops'
+  'xdg-desktop-portal-kde: portal backend for KDE Plasma'
+  'xdg-desktop-portal-gnome: portal backend for GNOME'
+)
+source=("git+${url}.git#tag=v${pkgver}")
+sha256sums=('SKIP')
+
+prepare() {
+  cd "$pkgname"
+  cargo fetch --locked --target "$CARCH-unknown-linux-gnu"
+}
+
+build() {
+  cd "$pkgname"
+  cargo build --release --frozen
+}
+
+check() {
+  cd "$pkgname"
+  cargo test --release --all-targets --frozen
+}
+
+package() {
+  cd "$pkgname"
+  make install DESTDIR="$pkgdir" PREFIX=/usr CARGO='cargo --offline'
+}

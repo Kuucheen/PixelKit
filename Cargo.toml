@@ -1,0 +1,56 @@
+[package]
+name = "pixelkit"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "A lightweight Linux color picker and screen ruler inspired by Microsoft PowerToys"
+license = "MIT"
+repository = "https://github.com/Kuucheen/PixelKit"
+readme = "README.md"
+keywords = ["color-picker", "screen-ruler", "linux", "wayland", "x11"]
+categories = ["gui", "multimedia::images"]
+
+[dependencies]
+anyhow = "1.0"
+arboard = { version = "3.6", default-features = false, features = ["wayland-data-control"] }
+# `documents` also activates ashpd's serde-repr dependency, which its 0.13
+# screenshot feature uses for the portal target flags.
+ashpd = { version = "0.13", default-features = false, features = ["tokio", "documents", "global_shortcuts", "screenshot"] }
+directories = "6.0"
+eframe = { version = "=0.31.1", default-features = false, features = ["accesskit", "default_fonts", "glow", "wayland", "x11"] }
+futures-util = "0.3"
+global-hotkey = "0.8"
+image = { version = "0.25", default-features = false, features = ["png"] }
+percent-encoding = "2.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+tokio = { version = "1.48", features = ["macros", "rt-multi-thread", "signal", "time"] }
+x11rb = { version = "0.13", features = ["randr"] }
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+opt-level = "s"
+panic = "abort"
+strip = "symbols"
+
+[package.metadata.deb]
+maintainer = "PixelKit contributors <70746714+Kuucheen@users.noreply.github.com>"
+copyright = "2026, PixelKit contributors"
+license-file = ["LICENSE", "4"]
+extended-description = "A native Linux implementation of the PowerToys Color Picker and Screen Ruler workflows."
+depends = "$auto, libc6, libgcc-s1, libgl1, libx11-6, libxcb1, libxkbcommon0, libwayland-client0"
+recommends = "xdg-desktop-portal, xdg-desktop-portal-gtk | xdg-desktop-portal-kde | xdg-desktop-portal-gnome"
+section = "graphics"
+priority = "optional"
+assets = [
+  ["target/release/pixelkit", "usr/bin/", "755"],
+  ["packaging/linux/io.github.Kuucheen.PixelKit.desktop", "usr/share/applications/", "644"],
+  ["packaging/linux/io.github.Kuucheen.PixelKit.metainfo.xml", "usr/share/metainfo/", "644"],
+  ["packaging/linux/io.github.Kuucheen.PixelKit.svg", "usr/share/icons/hicolor/scalable/apps/", "644"],
+  ["packaging/linux/io.github.Kuucheen.PixelKit.png", "usr/share/icons/hicolor/128x128/apps/", "644"],
+  ["packaging/linux/pixelkit.service", "usr/lib/systemd/user/", "644"],
+  ["docs/pixelkit.1", "usr/share/man/man1/", "644"],
+  ["NOTICE", "usr/share/doc/pixelkit/NOTICE", "644"],
+]

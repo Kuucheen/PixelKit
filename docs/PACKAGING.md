@@ -1,0 +1,58 @@
+# Packaging and release guide
+
+## Publication identity
+
+The application ID is `io.github.Kuucheen.PixelKit` and the upstream repository
+is `https://github.com/Kuucheen/PixelKit`. Cargo, Flatpak, AppStream, native
+packages, Snap, Nix and systemd metadata all use that publication identity.
+Changing the Flatpak application ID after publication would create a different
+application, so it must remain stable for future releases.
+
+## Release input
+
+```bash
+cargo update --workspace
+cargo test --all-targets --locked
+python3 packaging/flatpak/generate-cargo-sources.py
+make dist
+```
+
+`dist/pixelkit-VERSION-vendor.tar.xz` contains `Cargo.lock`, all registry
+sources, and `.cargo/config.toml`; RPM and Debian builds are therefore offline
+and reproducible. Attach both the normal source archive and the vendor archive
+to the GitHub release.
+
+## Validation checklist
+
+- `cargo test --all-targets --locked` passes on x86_64 and aarch64.
+- Release binary starts on a glibc baseline no newer than the oldest supported
+  distro (build in the CI container, not on a rolling host).
+- `appstreamcli validate --pedantic` passes.
+- `desktop-file-validate` passes.
+- `flatpak-builder --force-clean` succeeds with networking disabled for build.
+- `rpmlint`, `lintian`, `namcap`, and `snapcraft lint` pass for their artifacts.
+- X11 and Wayland picker/ruler smoke tests pass, including portal denial.
+- Test two monitors, mixed scale factors, RGB565/24/32-bit X visuals where
+  available, clipboard persistence, shortcut conflicts, and corrupt JSON.
+- Confirm the release contact and GitHub noreply address are appropriate for the publisher.
+- Sign the tag and publish SHA-256 checksums for every artifact.
+
+## Repository submissions
+
+- **Flathub:** submit `io.github.Kuucheen.PixelKit.yml` plus
+  `cargo-sources.json` to a new Flathub repository. Include real screenshots
+  and proof of namespace ownership.
+- **Fedora/Copr:** build the vendor source archive and `packaging/rpm` spec.
+  Fedora inclusion may prefer distro-packaged Rust crates; Copr accepts the
+  vendored release source.
+- **AUR:** copy `PKGBUILD`, run `updpkgsums` if switching from the tagged VCS
+  source to a release tarball, then generate `.SRCINFO` with `makepkg --printsrcinfo`.
+- **Debian/Ubuntu:** use the vendor archive as the upstream orig tar, then run
+  `dpkg-buildpackage`. Replace `unstable`/maintainer data for the target archive.
+- **Snap Store:** reserve the `pixelkit` name, then `snapcraft upload --release=stable`.
+- **Nixpkgs:** the flake works directly; a nixpkgs PR can translate it to the
+  standard package set after the upstream repository exists.
+
+Package definitions cannot reserve store names or sign/upload artifacts on
+their own. Those final publication operations require the user's store and
+repository credentials.

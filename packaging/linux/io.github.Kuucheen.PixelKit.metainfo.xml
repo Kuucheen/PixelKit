@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.Kuucheen.PixelKit</id>
+  <name>PixelKit</name>
+  <summary>Pick screen colors and measure pixel distances</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>
+      PixelKit provides a system-wide color picker, color editor and screen ruler
+      for Linux. It follows the workflows of the Microsoft PowerToys utilities
+      while using Linux-native X11 and freedesktop portal interfaces.
+    </p>
+    <p>The color tools include:</p>
+    <ul>
+      <li>Pixel-accurate full-resolution sampling with a magnifier and keyboard movement</li>
+      <li>Sixteen built-in formats and editable PowerToys-compatible templates</li>
+      <li>Color names, clipboard copy, adjustment, variations, export and history</li>
+    </ul>
+    <p>The ruler includes:</p>
+    <ul>
+      <li>Bounds, cross-spacing, horizontal and vertical measurement modes</li>
+      <li>Configurable edge tolerance, RGB-channel comparison and line color</li>
+      <li>Pixel, inch, centimetre and millimetre output</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.Kuucheen.PixelKit.desktop</launchable>
+  <provides>
+    <binary>pixelkit</binary>
+  </provides>
+  <categories>
+    <category>Graphics</category>
+    <category>Utility</category>
+    <category>Development</category>
+  </categories>
+  <url type="homepage">https://github.com/Kuucheen/PixelKit</url>
+  <url type="bugtracker">https://github.com/Kuucheen/PixelKit/issues</url>
+  <developer id="io.github.kuucheen">
+    <name>PixelKit contributors</name>
+  </developer>
+  <screenshots>
+    <screenshot type="default">
+      <image type="source" width="1280" height="720">https://raw.githubusercontent.com/Kuucheen/PixelKit/main/docs/screenshots/settings.png</image>
+      <caption>Launch and configure the Color Picker and Screen Ruler</caption>
+    </screenshot>
+    <screenshot>
+      <image type="source" width="1280" height="720">https://raw.githubusercontent.com/Kuucheen/PixelKit/main/docs/screenshots/editor.png</image>
+      <caption>Edit saved colors and copy configurable formats</caption>
+    </screenshot>
+  </screenshots>
+  <releases>
+    <release version="0.1.0" date="2026-07-13">
+      <description>
+        <p>Initial Linux release with Color Picker, Color Editor, Screen Ruler, X11 integration and Wayland portals.</p>
+      </description>
+    </release>
+  </releases>
+  <content_rating type="oars-1.1" />
+</component>

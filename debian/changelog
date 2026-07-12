@@ -1,0 +1,27 @@
+pixelkit (0.1.0-4) unstable; urgency=medium
+
+  * Publish under the Kuucheen GitHub and application namespaces.
+  * Fit the picker loupe to its content and reorder ruler tolerance controls.
+
+ -- PixelKit contributors <70746714+Kuucheen@users.noreply.github.com>  Mon, 13 Jul 2026 00:20:00 +0200
+
+pixelkit (0.1.0-3) unstable; urgency=medium
+
+  * Restore full-resolution captures with lossless GPU-safe texture tiling.
+  * Add exact ruler tolerance input and polish selected controls and swatches.
+  * Close the color editor with Escape.
+
+ -- PixelKit contributors <70746714+Kuucheen@users.noreply.github.com>  Sun, 12 Jul 2026 23:40:00 +0200
+
+pixelkit (0.1.0-2) unstable; urgency=medium
+
+  * Harden Wayland recapture and large-screen rendering.
+  * Add vector ruler icons and improve picker wheel and swatch behavior.
+
+ -- PixelKit contributors <70746714+Kuucheen@users.noreply.github.com>  Sun, 12 Jul 2026 22:30:00 +0200
+
+pixelkit (0.1.0-1) unstable; urgency=medium
+
+  * Initial Linux release.
+
+ -- PixelKit contributors <70746714+Kuucheen@users.noreply.github.com>  Sun, 12 Jul 2026 12:00:00 +0200

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=PixelKit shortcuts
+Comment=Enable PixelKit Color Picker and Screen Ruler shortcuts
+Exec=pixelkit daemon
+Icon=io.github.Kuucheen.PixelKit
+Terminal=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+OnlyShowIn=GNOME;KDE;XFCE;LXQt;MATE;Cinnamon;COSMIC;

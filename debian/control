@@ -1,0 +1,37 @@
+Source: pixelkit
+Section: graphics
+Priority: optional
+Maintainer: PixelKit contributors <70746714+Kuucheen@users.noreply.github.com>
+Build-Depends:
+ debhelper-compat (= 13),
+ cargo (>= 1.88),
+ rustc (>= 1.88),
+ gcc,
+ make,
+ pkg-config,
+ libx11-dev,
+ libxcb1-dev,
+ libwayland-dev,
+ libxkbcommon-dev
+Standards-Version: 4.7.0
+Homepage: https://github.com/Kuucheen/PixelKit
+Vcs-Git: https://github.com/Kuucheen/PixelKit.git
+Vcs-Browser: https://github.com/Kuucheen/PixelKit
+Rules-Requires-Root: no
+
+Package: pixelkit
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ libgl1,
+ libx11-6,
+ libxkbcommon0,
+ libwayland-client0
+Recommends:
+ xdg-desktop-portal,
+ xdg-desktop-portal-gtk | xdg-desktop-portal-kde | xdg-desktop-portal-gnome
+Description: Linux color picker and screen ruler
+ PixelKit provides a magnified system-wide color picker, a color history and
+ format editor, and a screen ruler with bounds and color-edge measurement
+ modes. It uses direct capture on X11 and freedesktop portals on Wayland.

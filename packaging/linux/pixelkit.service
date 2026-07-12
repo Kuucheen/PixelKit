@@ -1,0 +1,14 @@
+[Unit]
+Description=PixelKit global shortcuts
+Documentation=https://github.com/Kuucheen/PixelKit
+PartOf=graphical-session.target
+After=graphical-session.target xdg-desktop-portal.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/pixelkit daemon
+Restart=on-abnormal
+RestartSec=3
+
+[Install]
+WantedBy=default.target

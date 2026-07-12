@@ -1,0 +1,72 @@
+.TH PIXELKIT 1 "July 2026" "PixelKit 0.1.0" "User Commands"
+.SH NAME
+pixelkit \- Linux color picker and screen ruler
+.SH SYNOPSIS
+.B pixelkit
+[settings]
+.br
+.B pixelkit color-picker
+[--image FILE.png]
+.br
+.B pixelkit color-editor
+[--color HEX]
+.br
+.B pixelkit screen-ruler
+[--image FILE.png]
+.br
+.B pixelkit daemon
+.br
+.B pixelkit configure-shortcuts
+.SH DESCRIPTION
+PixelKit is a native system-wide color picker, color editor, and screen ruler.
+It uses direct X11 capture on X11 sessions and freedesktop screenshot and global
+shortcut portals on Wayland.
+.SH COMMANDS
+.TP
+.B settings
+Open the PixelKit settings and launcher window.
+.TP
+.B color-picker
+Capture the screen and open the magnified pixel picker.
+.TP
+.B color-editor
+Open color history, adjustment, format, and export tools.
+.TP
+.B screen-ruler
+Open the bounds and color-edge measurement overlay.
+.TP
+.B daemon
+Register configured global shortcuts until the process exits.
+.TP
+.B configure-shortcuts
+Open the desktop's Wayland shortcut configuration for PixelKit actions that
+do not yet have an active binding.
+.TP
+.B formats HEX
+Print all built-in representations for a color.
+.TP
+.B paths
+Print the settings and history file paths.
+.SH ENVIRONMENT
+.TP
+.B PIXELKIT_FORCE_PORTAL
+Use the screenshot portal even when PixelKit detects an X11 session.
+.TP
+.B XDG_CONFIG_HOME
+Base directory for settings.json. Defaults to ~/.config.
+.TP
+.B XDG_DATA_HOME
+Base directory for history.json. Defaults to ~/.local/share.
+.SH WAYLAND
+Wayland deliberately prevents applications from silently reading arbitrary
+pixels or grabbing global keys. PixelKit uses xdg-desktop-portal, so the
+compositor may show a permission or target-selection dialog.
+.SH FILES
+.TP
+~/.config/pixelkit/settings.json
+User settings.
+.TP
+~/.local/share/pixelkit/history.json
+Color history.
+.SH LICENSE
+MIT. PixelKit is independent of Microsoft and PowerToys.

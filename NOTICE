@@ -1,0 +1,10 @@
+PixelKit is an independent Linux project inspired by the user experience of
+Microsoft PowerToys Color Picker and Screen Ruler.
+
+Algorithm behavior and feature research used the Microsoft PowerToys source
+tree, which is licensed under the MIT License:
+https://github.com/microsoft/PowerToys
+
+PowerToys is Copyright (c) Microsoft Corporation. PixelKit is not affiliated
+with or endorsed by Microsoft. Microsoft, Windows, and PowerToys are trademarks
+of the Microsoft group of companies.

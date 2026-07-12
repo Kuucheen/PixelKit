@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.92'
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Install native validation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y appstream desktop-file-utils libx11-dev libxcb1-dev libwayland-dev libxkbcommon-dev
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --all-targets --locked -- -D warnings
+      - run: cargo test --all-targets --locked
+      - run: cargo build --release --locked
+      - run: appstreamcli validate --no-net packaging/linux/io.github.pixelkit_linux.PixelKit.metainfo.xml
+      - run: desktop-file-validate packaging/linux/io.github.pixelkit_linux.PixelKit.desktop packaging/linux/pixelkit-autostart.desktop
+      - name: Check generated Flatpak sources
+        run: |
+          cp packaging/flatpak/cargo-sources.json /tmp/cargo-sources.json
+          python3 packaging/flatpak/generate-cargo-sources.py
+          diff -u /tmp/cargo-sources.json packaging/flatpak/cargo-sources.json
+      - name: Check install tree
+        run: |
+          make install DESTDIR="$RUNNER_TEMP/stage" PREFIX=/usr CARGO='cargo --offline'
+          test -x "$RUNNER_TEMP/stage/usr/bin/pixelkit"
+          test -f "$RUNNER_TEMP/stage/usr/share/metainfo/io.github.pixelkit_linux.PixelKit.metainfo.xml"

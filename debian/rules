@@ -1,0 +1,24 @@
+#!/usr/bin/make -f
+
+export CARGO_HOME=$(CURDIR)/debian/cargo-home
+export CARGO_NET_OFFLINE=true
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	cargo build --release --frozen --offline
+
+override_dh_auto_test:
+	cargo test --release --all-targets --frozen --offline
+
+override_dh_auto_install:
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/pixelkit PREFIX=/usr CARGO="cargo --offline"
+
+override_dh_clean:
+	# Cargo verifies every vendored file, including crates' Cargo.toml.orig.
+	# Do not let dh_clean mistake those upstream files for packaging backups.
+	dh_clean -Xvendor/
+
+override_dh_dwz:
+	# Rust DWARF is not always accepted by dwz; stripping is handled by dh_strip.
