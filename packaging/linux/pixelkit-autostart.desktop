@@ -7,4 +7,3 @@ Icon=io.github.Kuucheen.PixelKit
 Terminal=false
 NoDisplay=true
 X-GNOME-Autostart-enabled=true
-OnlyShowIn=GNOME;KDE;XFCE;LXQt;MATE;Cinnamon;COSMIC;
