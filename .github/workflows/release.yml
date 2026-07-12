@@ -12,7 +12,7 @@ jobs:
   portable-and-deb:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: '1.92'
@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-24.04
     container: fedora:44
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install RPM toolchain
         run: dnf install -y rust cargo gcc make rpm-build xz libX11-devel libxcb-devel libxkbcommon-devel wayland-devel
       - run: ./scripts/make-dist.sh

@@ -11,7 +11,7 @@ jobs:
   test:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: '1.92'
@@ -25,8 +25,8 @@ jobs:
       - run: cargo clippy --all-targets --locked -- -D warnings
       - run: cargo test --all-targets --locked
       - run: cargo build --release --locked
-      - run: appstreamcli validate --no-net packaging/linux/io.github.pixelkit_linux.PixelKit.metainfo.xml
-      - run: desktop-file-validate packaging/linux/io.github.pixelkit_linux.PixelKit.desktop packaging/linux/pixelkit-autostart.desktop
+      - run: appstreamcli validate --no-net packaging/linux/io.github.Kuucheen.PixelKit.metainfo.xml
+      - run: desktop-file-validate packaging/linux/io.github.Kuucheen.PixelKit.desktop packaging/linux/pixelkit-autostart.desktop
       - name: Check generated Flatpak sources
         run: |
           cp packaging/flatpak/cargo-sources.json /tmp/cargo-sources.json
@@ -36,4 +36,4 @@ jobs:
         run: |
           make install DESTDIR="$RUNNER_TEMP/stage" PREFIX=/usr CARGO='cargo --offline'
           test -x "$RUNNER_TEMP/stage/usr/bin/pixelkit"
-          test -f "$RUNNER_TEMP/stage/usr/share/metainfo/io.github.pixelkit_linux.PixelKit.metainfo.xml"
+          test -f "$RUNNER_TEMP/stage/usr/share/metainfo/io.github.Kuucheen.PixelKit.metainfo.xml"
