@@ -201,17 +201,21 @@ coordinate mismatch.
 ## GitHub and release state
 
 - `main` tracks `origin/main` at `git@github.com:Kuucheen/PixelKit.git`.
-- Tag `v0.1.0` and its GitHub release already exist. Do not move or overwrite a
-  published tag casually.
+- Tags `v0.1.0` and `v0.1.1` and their GitHub releases already exist. Do not
+  move or overwrite a published tag casually.
 - CI validates formatting, Clippy, tests, release build, AppStream, desktop
   files, generated Flatpak sources, and the staged install tree.
 - The release workflow builds a portable archive, DEB, RPM, SRPM, debug RPMs,
-  vendored source, and checksums.
-- As of 2026-07-13, the final `main` CI and the `v0.1.0` release workflow were
+  vendored source, and checksums. Build jobs only upload temporary workflow
+  artifacts; one final job combines them, writes the complete checksum
+  manifest, and publishes the GitHub release. Do not publish independently
+  from each build job: that previously created duplicate names, stale Debian
+  revisions, and an incomplete `SHA256SUMS`.
+- As of 2026-07-13, `main` CI and the original `v0.1.1` release workflow were
   green.
-- The GitHub repository is currently private. Public Flathub, Fedora, AUR, and
-  similar submissions require a public upstream, but changing visibility
-  exposes the project. Do not make it public without explicit user approval.
+- The GitHub repository is public. Distro and store submissions are possible,
+  but still require the maintainer's own service accounts, credentials, and
+  any ecosystem-specific review.
 
 ## Common traps to avoid
 

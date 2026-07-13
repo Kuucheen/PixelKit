@@ -4,54 +4,125 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing vX.Y.Z tag to build and publish
+        required: true
+        type: string
 
 permissions:
-  contents: write
+  contents: read
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  portable-and-deb:
+  validate:
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - name: Verify tag and package version
+        id: version
+        shell: bash
+        run: |
+          version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -1)"
+          test -n "$version"
+          if [[ "$RELEASE_TAG" != "v$version" ]]; then
+            echo "Release tag $RELEASE_TAG does not match Cargo version $version" >&2
+            exit 1
+          fi
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+  portable-deb-source:
+    needs: validate
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: '1.92'
       - uses: Swatinem/rust-cache@v2
-      - run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libx11-dev libxcb1-dev libwayland-dev libxkbcommon-dev
-      - run: cargo test --all-targets --locked
-      - run: cargo build --release --locked
-      - run: cargo install cargo-deb --locked
-      - run: cargo deb --locked
-      - run: ./scripts/make-dist.sh
-      - name: Portable binary archive
+      - name: Install native and Debian package tools
         run: |
-          mkdir -p release/pixelkit-${{ github.ref_name }}-linux-x86_64
-          cp target/release/pixelkit README.md LICENSE NOTICE release/pixelkit-${{ github.ref_name }}-linux-x86_64/
-          tar -C release -cJf release/pixelkit-${{ github.ref_name }}-linux-x86_64.tar.xz pixelkit-${{ github.ref_name }}-linux-x86_64
-          sha256sum release/*.tar.xz target/debian/*.deb > release/SHA256SUMS
-      - uses: softprops/action-gh-release@v2
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev libx11-dev libxcb1-dev \
+            libwayland-dev libxkbcommon-dev xz-utils
+          cargo install cargo-deb --locked
+      - run: cargo test --all-targets --locked
+      - name: Build source, portable, and Debian artifacts
+        run: |
+          ./scripts/build-packages.sh --clean --skip-checks source portable deb
+      - uses: actions/upload-artifact@v4
         with:
-          files: |
-            release/*
-            target/debian/*.deb
-            dist/*
+          name: release-portable-deb-source
+          path: |
+            dist/*.tar.xz
+            dist/*.deb
+          if-no-files-found: error
+          compression-level: 0
 
   rpm:
+    needs: validate
     runs-on: ubuntu-24.04
     container: fedora:44
     steps:
-      - uses: actions/checkout@v5
       - name: Install RPM toolchain
-        run: dnf install -y rust cargo gcc make rpm-build xz libX11-devel libxcb-devel libxkbcommon-devel wayland-devel
-      - run: ./scripts/make-dist.sh
-      - name: Build RPM and SRPM
         run: |
-          mkdir -p "$PWD/rpmbuild"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
-          cp dist/pixelkit-*-vendor.tar.xz "$PWD/rpmbuild/SOURCES/"
-          cp packaging/rpm/pixelkit.spec "$PWD/rpmbuild/SPECS/"
-          rpmbuild --define "_topdir $PWD/rpmbuild" -ba "$PWD/rpmbuild/SPECS/pixelkit.spec"
-      - uses: softprops/action-gh-release@v2
+          dnf install -y rust cargo gcc make rpm-build xz python3 git-core \
+            diffutils libX11-devel libxcb-devel libxkbcommon-devel \
+            wayland-devel
+      - uses: actions/checkout@v5
         with:
-          files: |
-            rpmbuild/RPMS/**/*.rpm
-            rpmbuild/SRPMS/*.rpm
+          ref: ${{ needs.validate.outputs.tag }}
+      - name: Build RPM artifacts
+        run: |
+          ./scripts/build-packages.sh --clean --skip-checks rpm
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-rpm
+          path: dist/*.rpm
+          if-no-files-found: error
+          compression-level: 0
+
+  publish:
+    needs: [validate, portable-deb-source, rpm]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release
+          merge-multiple: true
+      - name: Write and verify the combined checksum manifest
+        shell: bash
+        run: |
+          cd release
+          mapfile -d '' artifacts < <(
+            find . -maxdepth 1 -type f ! -name SHA256SUMS \
+              -printf '%f\0' | sort -z
+          )
+          if ((${#artifacts[@]} == 0)); then
+            echo "No release artifacts were downloaded" >&2
+            exit 1
+          fi
+          sha256sum "${artifacts[@]}" > SHA256SUMS
+          sha256sum -c SHA256SUMS
+      - name: Publish one canonical artifact set
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.validate.outputs.tag }}
+          files: release/*
+          overwrite_files: true
+          fail_on_unmatched_files: true
