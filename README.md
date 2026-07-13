@@ -84,6 +84,42 @@ pixelkit color-picker
 pixelkit screen-ruler
 ```
 
+## Install from package repositories
+
+Published x86_64 packages are available from the
+[Fedora Copr repository](https://copr.fedorainfracloud.org/coprs/kuchen/pixelkit/)
+and the
+[openSUSE Build Service project](https://build.opensuse.org/project/show/home:kuchen:PixelKit).
+
+### Fedora 44 and Rawhide
+
+```bash
+sudo dnf copr enable kuchen/pixelkit
+sudo dnf install pixelkit
+```
+
+### Debian 13 and Ubuntu 24.04/26.04
+
+Set `repo` to the entry matching the installed distribution, then add the OBS
+signing key and APT source:
+
+```bash
+repo=xUbuntu_24.04 # Debian_13, xUbuntu_24.04, or xUbuntu_26.04
+base="https://download.opensuse.org/repositories/home:/kuchen:/PixelKit/$repo"
+
+sudo apt install curl gpg
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL "$base/Release.key" | gpg --dearmor | \
+  sudo tee /etc/apt/keyrings/pixelkit-obs.gpg >/dev/null
+echo "deb [signed-by=/etc/apt/keyrings/pixelkit-obs.gpg] $base/ /" | \
+  sudo tee /etc/apt/sources.list.d/pixelkit-obs.list
+sudo apt update
+sudo apt install pixelkit
+```
+
+The OBS signing-key fingerprint is
+`C246 A272 BD2F B2A0 4044 ECDA C7C1 26FB 1D6D 878E`.
+
 ## Install from source
 
 Rust 1.88 or newer, GCC, `make`, and normal X11/Wayland/OpenGL runtime libraries
@@ -100,6 +136,8 @@ For a user-only installation:
 ```bash
 ./scripts/install-user.sh
 ```
+
+## Run PixelKit
 
 Launch `pixelkit`, or use a direct command:
 
