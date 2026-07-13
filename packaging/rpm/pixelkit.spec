@@ -1,6 +1,6 @@
 Name:           pixelkit
 Version:        0.1.1
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        Native Linux color picker and screen ruler
 License:        MIT
 URL:            https://github.com/Kuucheen/PixelKit
@@ -53,6 +53,9 @@ make install DESTDIR=%{buildroot} PREFIX=%{_prefix} CARGO="cargo --offline"
 %{_mandir}/man1/pixelkit.1*
 
 %changelog
+* Mon Jul 13 2026 PixelKit contributors <70746714+Kuucheen@users.noreply.github.com> - 0.1.1-4
+- Republish Debian and Ubuntu packages after OBS signing-key setup
+
 * Mon Jul 13 2026 PixelKit contributors <70746714+Kuucheen@users.noreply.github.com> - 0.1.1-3
 - Fix offline vendored source configuration for clean builds
 
