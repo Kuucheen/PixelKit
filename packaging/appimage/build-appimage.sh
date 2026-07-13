@@ -11,7 +11,7 @@ cargo build --release --locked
 rm -rf AppDir
 make install DESTDIR="$PWD/AppDir" PREFIX=/usr CARGO="cargo --offline"
 
-export OUTPUT="PixelKit-$(uname -m).AppImage"
+export OUTPUT="${OUTPUT:-PixelKit-$(uname -m).AppImage}"
 linuxdeploy \
     --appdir AppDir \
     --desktop-file packaging/linux/io.github.Kuucheen.PixelKit.desktop \

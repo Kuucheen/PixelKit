@@ -7,7 +7,7 @@ TARGET_DIR ?= target
 SYSTEMD_USER_UNIT_DIR ?= $(PREFIX)/lib/systemd/user
 BINARY := $(TARGET_DIR)/$(PROFILE)/pixelkit
 
-.PHONY: all build test check install uninstall clean dist vendor flatpak
+.PHONY: all build test check install uninstall clean dist vendor flatpak packages
 
 all: build
 
@@ -51,3 +51,6 @@ dist:
 
 flatpak:
 	flatpak-builder --force-clean build-dir packaging/flatpak/io.github.Kuucheen.PixelKit.local.yml
+
+packages:
+	./scripts/build-packages.sh $(PACKAGE_ARGS)

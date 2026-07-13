@@ -156,8 +156,14 @@ coordinate mismatch.
 
 ## Packaging conventions
 
-- `make dist` creates `dist/pixelkit-VERSION-vendor.tar.xz` with all locked Cargo
-  sources. RPM/SRPM builds use this archive offline.
+- `./scripts/build-packages.sh` is the canonical local package entry point. It
+  refreshes Flatpak Cargo hashes, validates version consistency, builds all
+  locally available formats, and verifies `dist/SHA256SUMS`. Use explicit
+  format arguments when one artifact is required.
+- `make packages` is a shorthand; pass script arguments with `PACKAGE_ARGS`.
+- `make dist` remains the low-level command that creates the deterministic
+  `dist/pixelkit-VERSION-vendor.tar.xz` with all locked Cargo sources.
+  RPM/SRPM builds use this archive offline.
 - Relevant definitions are:
   - Fedora/RHEL: `packaging/rpm/pixelkit.spec`
   - openSUSE: `packaging/opensuse/pixelkit.spec`
@@ -167,10 +173,10 @@ coordinate mismatch.
   - Snap: `snap/snapcraft.yaml`
   - Nix: `flake.nix`
   - AppImage: `packaging/appimage/build-appimage.sh`
-- For iterative changes within version 0.1.0, increment the Fedora `Release`,
-  prepend a Debian changelog revision, and increment Arch `pkgrel` together.
-  The latest local artifacts at the time this guide was written were Fedora
-  release 6 and Debian revision 4.
+- For iterative changes within one upstream version, run
+  `./scripts/build-packages.sh --bump "Short changelog summary"`. The helper
+  increments the Fedora `Release`, prepends a Debian changelog revision, and
+  increments Arch `pkgrel` together. Do not edit only one of them manually.
 - Fedora runtime dependency names matter. Require `libwayland-client`, not the
   nonexistent generic `wayland` capability that caused the first RPM install
   failure.
@@ -178,8 +184,8 @@ coordinate mismatch.
   `rpmbuild --build-in-place` can leave an empty `debugsourcefiles.list`; if it
   is used for quick local iteration, disable the optional debug package or do
   not treat it as the canonical release build.
-- Regenerate `dist/SHA256SUMS` after the final artifacts and verify it with
-  `sha256sum -c`. `dist/`, RPMs, and DEBs are intentionally ignored by Git.
+- The package script regenerates and verifies `dist/SHA256SUMS` for artifacts
+  from that run. `dist/`, RPMs, and DEBs are intentionally ignored by Git.
 - Installed desktop, icon, and AppStream filenames must match
   `io.github.Kuucheen.PixelKit`.
 - The AppStream component ID uses the published capitalization, while its

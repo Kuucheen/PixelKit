@@ -11,16 +11,41 @@ application, so it must remain stable for future releases.
 ## Release input
 
 ```bash
-cargo update --workspace
-cargo test --all-targets --locked
-python3 packaging/flatpak/generate-cargo-sources.py
-make dist
+./scripts/build-packages.sh --list
+./scripts/build-packages.sh
 ```
 
 `dist/pixelkit-VERSION-vendor.tar.xz` contains `Cargo.lock`, all registry
 sources, and `.cargo/config.toml`; RPM and Debian builds are therefore offline
-and reproducible. Attach both the normal source archive and the vendor archive
-to the GitHub release.
+and reproducible. The orchestrator builds `source` and `portable` plus every
+format whose native builder is available. Name one or more formats to require
+them explicitly, such as:
+
+```bash
+./scripts/build-packages.sh rpm deb
+./scripts/build-packages.sh --skip-checks flatpak
+make packages PACKAGE_ARGS="rpm deb"
+```
+
+It checks that Cargo, RPM, Debian, Arch, Flatpak, Snap, Nix, and AppStream all
+declare the same upstream version. It also regenerates
+`packaging/flatpak/cargo-sources.json` from `Cargo.lock`, creates deterministic
+source and portable archives, and writes `dist/SHA256SUMS` for exactly the
+artifacts produced by the run. Old files are left alone unless `--clean` is
+given, but they are not silently included in the new checksum manifest.
+
+For another distro package revision of the current upstream version, use:
+
+```bash
+./scripts/build-packages.sh --bump "Describe the packaged change"
+```
+
+The bump is explicit because it edits the Fedora changelog/release, Debian
+changelog/revision, and Arch `pkgrel`. The build script never changes the
+upstream version, signs artifacts, moves tags, publishes releases, or uploads
+to stores. Those remain deliberate maintainer actions. Attach the source,
+portable, native package artifacts, and checksum manifest to the GitHub
+release.
 
 ## Validation checklist
 

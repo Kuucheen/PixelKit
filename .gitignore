@@ -9,5 +9,7 @@
 *.deb
 *.rpm
 *.pkg.tar.*
+__pycache__/
+*.pyc
 debug*.list
 elfbins.list

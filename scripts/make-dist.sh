@@ -6,6 +6,7 @@ version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -1)"
 name="pixelkit-${version}"
 output="${PWD}/dist"
 staging="$(mktemp -d)"
+source_date_epoch="${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct 2>/dev/null || date +%s)}"
 trap 'rm -rf "$staging"' EXIT
 
 mkdir -p "$output" "$staging/$name"
@@ -13,7 +14,8 @@ tar --exclude-vcs --exclude=target --exclude=dist --exclude=vendor --exclude=.ca
     -cf - . | tar -xf - -C "$staging/$name"
 (
     cd "$staging/$name"
-    ./scripts/vendor.sh
+    PIXELKIT_VENDOR_QUIET=1 ./scripts/vendor.sh
 )
-tar -C "$staging" -cJf "$output/${name}-vendor.tar.xz" "$name"
+tar --sort=name --mtime="@$source_date_epoch" --owner=0 --group=0 --numeric-owner \
+    -C "$staging" -cJf "$output/${name}-vendor.tar.xz" "$name"
 sha256sum "$output/${name}-vendor.tar.xz"

@@ -127,17 +127,35 @@ families. Release builders use the locked dependency graph; distro builds can
 use the vendored source archive produced by `make dist` and need no network
 inside the build sandbox.
 
+The normal entry point is the package orchestrator. It refreshes Flatpak's
+locked Cargo source hashes, runs the available checks once, reuses the release
+binary where possible, and writes a verified `dist/SHA256SUMS`:
+
+```bash
+./scripts/build-packages.sh --list
+./scripts/build-packages.sh
+```
+
+With no format arguments it builds every format supported by tools installed
+on the current host. Explicit selections are strict, for example
+`./scripts/build-packages.sh rpm deb`. For a new package revision of the same
+upstream version, use `--bump "Short changelog summary"`; this increments the
+Fedora, Debian, and Arch revisions together before building. `make packages`
+is a shorthand, with optional arguments supplied through `PACKAGE_ARGS`. If an
+RPM builder is installed without the spec's development packages, `--list`
+reports the missing package names; on Fedora they can all be installed with
+`sudo dnf builddep packaging/rpm/pixelkit.spec`.
+
 | Ecosystem | Definition | Build command |
 |---|---|---|
-| Flatpak / Flathub | `packaging/flatpak/` | `make flatpak` |
-| Fedora / RHEL / DNF | `packaging/rpm/pixelkit.spec` | `make dist && rpmbuild -ba packaging/rpm/pixelkit.spec --define "_sourcedir $PWD/dist"` |
-| openSUSE / Zypper | `packaging/opensuse/pixelkit.spec` | `make dist && rpmbuild -ba packaging/opensuse/pixelkit.spec --define "_sourcedir $PWD/dist"` |
-| Debian / Ubuntu / APT | `debian/` | `dpkg-buildpackage -b -us -uc` |
-| Arch / pacman / AUR | `packaging/arch/PKGBUILD` | `makepkg -si` |
-| Snap Store | `snap/snapcraft.yaml` | `snapcraft` |
-| Nix / NixOS | `flake.nix` | `nix build` |
-| AppImage | `packaging/appimage/build-appimage.sh` | `./packaging/appimage/build-appimage.sh` |
-| cargo-deb | `Cargo.toml` metadata | `cargo deb --locked` |
+| Flatpak / Flathub | `packaging/flatpak/` | `./scripts/build-packages.sh flatpak` |
+| Fedora / RHEL / DNF | `packaging/rpm/pixelkit.spec` | `./scripts/build-packages.sh rpm` |
+| openSUSE / Zypper | `packaging/opensuse/pixelkit.spec` | `./scripts/build-packages.sh opensuse` |
+| Debian / Ubuntu / APT | `debian/`, `Cargo.toml` | `./scripts/build-packages.sh deb` |
+| Arch / pacman / AUR | `packaging/arch/PKGBUILD` | `./scripts/build-packages.sh arch` |
+| Snap Store | `snap/snapcraft.yaml` | `./scripts/build-packages.sh snap` |
+| Nix / NixOS | `flake.nix` | `./scripts/build-packages.sh nix` |
+| AppImage | `packaging/appimage/build-appimage.sh` | `./scripts/build-packages.sh appimage` |
 
 See [Packaging and release guide](docs/PACKAGING.md) for namespace ownership,
 checksums, repository submission, and validation details.
