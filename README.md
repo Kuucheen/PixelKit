@@ -140,13 +140,22 @@ binary where possible, and writes a verified `dist/SHA256SUMS`:
 
 With no format arguments it builds every format supported by tools installed
 on the current host. Explicit selections are strict, for example
-`./scripts/build-packages.sh rpm deb`. For a new package revision of the same
-upstream version, use `--bump "Short changelog summary"`; this increments the
-Fedora, Debian, and Arch revisions together before building. `make packages`
-is a shorthand, with optional arguments supplied through `PACKAGE_ARGS`. If an
-RPM builder is installed without the spec's development packages, `--list`
-reports the missing package names; on Fedora they can all be installed with
-`sudo dnf builddep packaging/rpm/pixelkit.spec`.
+`./scripts/build-packages.sh rpm deb`. For a real upstream release, use:
+
+```bash
+./scripts/build-packages.sh --clean --set-version 0.1.1
+```
+
+This updates Cargo, the lockfile, distro package definitions, Flatpak, Snap,
+Nix, AppStream, and the manual page, then resets RPM/Debian/Arch package
+revisions for the new version. For another package revision of the same
+upstream version, use `--bump "Short changelog summary"` instead. Neither option
+commits, tags, pushes, or publishes anything.
+
+`make packages` is a shorthand, with optional arguments supplied through
+`PACKAGE_ARGS`. If an RPM builder is installed without the spec's development
+packages, `--list` reports the missing package names; on Fedora they can all be
+installed with `sudo dnf builddep packaging/rpm/pixelkit.spec`.
 
 | Ecosystem | Definition | Build command |
 |---|---|---|

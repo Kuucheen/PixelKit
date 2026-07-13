@@ -31,6 +31,7 @@ jobs:
         run: |
           bash -n scripts/build-packages.sh scripts/make-dist.sh packaging/appimage/build-appimage.sh
           python3 scripts/bump-package-release.py --dry-run "Validate package automation"
+          python3 scripts/set-version.py --dry-run 999.0.0
           ./scripts/build-packages.sh --list
       - name: Check generated Flatpak sources
         run: |

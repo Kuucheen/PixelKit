@@ -9,6 +9,7 @@ dist="$root/dist"
 skip_checks=false
 clean=false
 bump_message=""
+set_version=""
 list_only=false
 explicit_formats=false
 declare -a requested=()
@@ -56,6 +57,8 @@ makes a missing builder an error.
 
 Options:
   --bump MESSAGE   Increment RPM, Debian, and Arch package revisions first
+  --set-version X.Y.Z
+                   Set a new upstream version and reset package revisions
   --skip-checks    Skip tests and metadata validation
   --clean          Remove previous generated package output before building
   --list           Show which formats can be built on this host
@@ -65,6 +68,7 @@ Examples:
   ./scripts/build-packages.sh
   ./scripts/build-packages.sh rpm deb
   ./scripts/build-packages.sh --bump "Fix picker tooltip sizing"
+  ./scripts/build-packages.sh --clean --set-version 0.1.1
 EOF
 }
 
@@ -175,6 +179,11 @@ while (($#)); do
             bump_message="$2"
             shift 2
             ;;
+        --set-version)
+            (($# >= 2)) || die "--set-version requires an X.Y.Z version"
+            set_version="$2"
+            shift 2
+            ;;
         --skip-checks)
             skip_checks=true
             shift
@@ -199,6 +208,10 @@ while (($#)); do
             ;;
     esac
 done
+
+if [[ -n "$bump_message" && -n "$set_version" ]]; then
+    die "--bump and --set-version cannot be used together"
+fi
 
 if $list_only; then
     show_formats
@@ -247,7 +260,10 @@ for format in "${requested[@]}"; do
     fi
 done
 
-if [[ -n "$bump_message" ]]; then
+if [[ -n "$set_version" ]]; then
+    log "Setting upstream version to $set_version"
+    python3 scripts/set-version.py "$set_version"
+elif [[ -n "$bump_message" ]]; then
     log "Incrementing distro package revisions"
     python3 scripts/bump-package-release.py "$bump_message"
 fi
@@ -391,12 +407,16 @@ build_rpm() {
     local slug="$2"
     local spec="$3"
     local top="$work/rpmbuild-$slug"
+    local rpm_options=()
+    if $skip_checks; then
+        rpm_options+=(--nocheck)
+    fi
     build_source
     log "Building the $label RPM and source RPM"
     mkdir -p "$top"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
     cp "$dist/pixelkit-${version}-vendor.tar.xz" "$top/SOURCES/"
     cp "$spec" "$top/SPECS/pixelkit.spec"
-    rpmbuild --define "_topdir $top" -ba "$top/SPECS/pixelkit.spec"
+    rpmbuild "${rpm_options[@]}" --define "_topdir $top" -ba "$top/SPECS/pixelkit.spec"
     while IFS= read -r -d '' package; do
         local destination="$dist/$(basename "$package")"
         cp "$package" "$destination"
@@ -414,13 +434,31 @@ build_deb() {
 
 build_arch() {
     local pkgrel
+    local source_archive="$dist/pixelkit-${version}-vendor.tar.xz"
+    local source_name="$(basename "$source_archive")"
+    local package_root="$work/arch-package"
+    local makepkg_options=(--cleanbuild --force --noconfirm)
+    if $skip_checks; then
+        makepkg_options+=(--nocheck)
+    fi
     pkgrel="$(sed -n 's/^pkgrel=//p' packaging/arch/PKGBUILD | head -1)"
+    build_source
     log "Building the Arch package"
-    mkdir -p "$work/arch-src" "$work/arch-build"
+    mkdir -p "$package_root" "$work/arch-build"
+    cp packaging/arch/PKGBUILD "$package_root/PKGBUILD"
+    cp "$source_archive" "$package_root/$source_name"
+    local source_hash
+    source_hash="$(sha256sum "$source_archive" | cut -d' ' -f1)"
+    sed -i \
+        -e "s|^source=.*|source=(\"$source_name\")|" \
+        -e "s|^sha256sums=.*|sha256sums=('$source_hash')|" \
+        -e 's|cd "$pkgname"|cd "$pkgname-$pkgver"|g' \
+        "$package_root/PKGBUILD"
+    bash -n "$package_root/PKGBUILD"
     (
-        cd packaging/arch
-        PKGDEST="$dist" SRCDEST="$work/arch-src" BUILDDIR="$work/arch-build" \
-            makepkg --cleanbuild --force --noconfirm
+        cd "$package_root"
+        PKGDEST="$dist" SRCDEST="$package_root" BUILDDIR="$work/arch-build" \
+            makepkg "${makepkg_options[@]}"
     )
     local matches=("$dist/pixelkit-${version}-${pkgrel}-"*.pkg.tar.*)
     ((${#matches[@]} > 0)) || die "makepkg did not create an Arch package"

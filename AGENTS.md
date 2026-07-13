@@ -177,6 +177,11 @@ coordinate mismatch.
   `./scripts/build-packages.sh --bump "Short changelog summary"`. The helper
   increments the Fedora `Release`, prepends a Debian changelog revision, and
   increments Arch `pkgrel` together. Do not edit only one of them manually.
+- For a new stable upstream version, run
+  `./scripts/build-packages.sh --clean --set-version X.Y.Z`. This updates every
+  embedded version, preserves release history, and resets Fedora, Debian, and
+  Arch to package revision 1. It deliberately does not commit, tag, push, or
+  publish. Never rename artifact files to simulate another version.
 - Fedora runtime dependency names matter. Require `libwayland-client`, not the
   nonexistent generic `wayland` capability that caused the first RPM install
   failure.

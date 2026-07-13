@@ -40,12 +40,24 @@ For another distro package revision of the current upstream version, use:
 ./scripts/build-packages.sh --bump "Describe the packaged change"
 ```
 
-The bump is explicit because it edits the Fedora changelog/release, Debian
-changelog/revision, and Arch `pkgrel`. The build script never changes the
-upstream version, signs artifacts, moves tags, publishes releases, or uploads
-to stores. Those remain deliberate maintainer actions. Attach the source,
-portable, native package artifacts, and checksum manifest to the GitHub
-release.
+For a new stable upstream version, use:
+
+```bash
+./scripts/build-packages.sh --clean --set-version 0.1.1
+```
+
+`--set-version` accepts stable `X.Y.Z` versions newer than the current one. It
+updates Cargo and its lockfile, both RPM specs, Debian, Arch, Flatpak, Snap,
+Nix, AppStream release history, and the manual page. Fedora, Debian, and Arch
+start at package revision 1 for the new upstream release; openSUSE resets to
+release 0. Generated artifact names then follow the embedded version, so never
+rename package files manually.
+
+The version and package bumps are explicit because they edit tracked metadata.
+They never commit, sign, tag, push, publish releases, or upload to stores. After
+reviewing the changes, the maintainer still creates and pushes the release
+commit and `vX.Y.Z` tag. Attach the source, portable, native package artifacts,
+and checksum manifest to the GitHub release.
 
 ## Validation checklist
 
