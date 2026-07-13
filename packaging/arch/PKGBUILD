@@ -1,7 +1,7 @@
 # Maintainer: PixelKit contributors <70746714+Kuucheen@users.noreply.github.com>
 pkgname=pixelkit
 pkgver=0.1.1
-pkgrel=1
+pkgrel=2
 pkgdesc='Native Linux color picker and screen ruler'
 arch=('x86_64' 'aarch64')
 url='https://github.com/Kuucheen/PixelKit'

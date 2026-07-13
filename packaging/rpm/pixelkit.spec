@@ -1,6 +1,6 @@
 Name:           pixelkit
 Version:        0.1.1
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Native Linux color picker and screen ruler
 License:        MIT
 URL:            https://github.com/Kuucheen/PixelKit
@@ -53,6 +53,9 @@ make install DESTDIR=%{buildroot} PREFIX=%{_prefix} CARGO="cargo --offline"
 %{_mandir}/man1/pixelkit.1*
 
 %changelog
+* Mon Jul 13 2026 PixelKit contributors <70746714+Kuucheen@users.noreply.github.com> - 0.1.1-2
+- Bigger close button for the ruler
+
 * Mon Jul 13 2026 PixelKit contributors <70746714+Kuucheen@users.noreply.github.com> - 0.1.1-1
 - Release PixelKit 0.1.1
 
