@@ -41,7 +41,7 @@ parts:
       craftctl default
       install -Dm644 packaging/linux/io.github.Kuucheen.PixelKit.desktop "$CRAFT_PART_INSTALL/share/applications/io.github.Kuucheen.PixelKit.desktop"
       install -Dm644 packaging/linux/io.github.Kuucheen.PixelKit.metainfo.xml "$CRAFT_PART_INSTALL/share/metainfo/io.github.Kuucheen.PixelKit.metainfo.xml"
-      install -Dm644 packaging/linux/io.github.Kuucheen.PixelKit.svg "$CRAFT_PART_INSTALL/share/icons/hicolor/scalable/apps/io.github.Kuucheen.PixelKit.svg"
       install -Dm644 packaging/linux/io.github.Kuucheen.PixelKit.png "$CRAFT_PART_INSTALL/share/icons/hicolor/128x128/apps/io.github.Kuucheen.PixelKit.png"
+      install -Dm644 packaging/linux/512x512/io.github.Kuucheen.PixelKit.png "$CRAFT_PART_INSTALL/share/icons/hicolor/512x512/apps/io.github.Kuucheen.PixelKit.png"
       install -Dm644 LICENSE "$CRAFT_PART_INSTALL/share/licenses/pixelkit/LICENSE"
       sed -i 's|Exec=pixelkit|Exec=pixelkit.pixelkit|' "$CRAFT_PART_INSTALL/share/applications/io.github.Kuucheen.PixelKit.desktop"

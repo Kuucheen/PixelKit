@@ -45,8 +45,8 @@ make install DESTDIR=%{buildroot} PREFIX=%{_prefix} CARGO="cargo --offline"
 %{_bindir}/pixelkit
 %{_datadir}/applications/io.github.Kuucheen.PixelKit.desktop
 %{_datadir}/metainfo/io.github.Kuucheen.PixelKit.metainfo.xml
-%{_datadir}/icons/hicolor/scalable/apps/io.github.Kuucheen.PixelKit.svg
 %{_datadir}/icons/hicolor/128x128/apps/io.github.Kuucheen.PixelKit.png
+%{_datadir}/icons/hicolor/512x512/apps/io.github.Kuucheen.PixelKit.png
 %{_prefix}/lib/systemd/user/pixelkit.service
 %{_mandir}/man1/pixelkit.1%{?ext_man}
 
