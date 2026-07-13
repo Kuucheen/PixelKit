@@ -44,6 +44,7 @@ Formats:
   rpm         Fedora/RHEL binary RPM and source RPM
   opensuse    openSUSE binary RPM and source RPM
   deb         Debian/Ubuntu package through cargo-deb
+  deb-source  Debian source package for OBS and Debian/Ubuntu builders
   arch        Arch package through makepkg
   flatpak     Single-file Flatpak bundle
   appimage    AppImage through linuxdeploy
@@ -67,6 +68,7 @@ Options:
 Examples:
   ./scripts/build-packages.sh
   ./scripts/build-packages.sh rpm deb
+  ./scripts/build-packages.sh --clean deb-source
   ./scripts/build-packages.sh --bump "Fix picker tooltip sizing"
   ./scripts/build-packages.sh --clean --set-version 0.1.1
 EOF
@@ -112,7 +114,9 @@ format_available() {
     local ids
     ids=" $(host_ids) "
     case "$format" in
-        source | portable) command -v cargo >/dev/null && command -v tar >/dev/null ;;
+        source | portable | deb-source)
+            command -v cargo >/dev/null && command -v tar >/dev/null
+            ;;
         rpm)
             command -v rpmbuild >/dev/null &&
                 [[ "$ids" == *" fedora "* || "$ids" == *" rhel "* ||
@@ -163,7 +167,7 @@ missing_tool_hint() {
 
 show_formats() {
     local format
-    for format in source portable rpm opensuse deb arch flatpak appimage snap nix; do
+    for format in source portable rpm opensuse deb deb-source arch flatpak appimage snap nix; do
         if format_available "$format"; then
             printf '%-10s available\n' "$format"
         else
@@ -218,10 +222,10 @@ if $list_only; then
     exit 0
 fi
 
-all_formats=(source portable rpm opensuse deb arch flatpak appimage snap nix)
+all_formats=(source portable rpm opensuse deb deb-source arch flatpak appimage snap nix)
 if ((${#requested[@]} == 0)); then
     requested=(source portable)
-    for format in rpm opensuse deb arch flatpak appimage snap nix; do
+    for format in rpm opensuse deb deb-source arch flatpak appimage snap nix; do
         if format_available "$format"; then
             requested+=("$format")
         else
@@ -248,7 +252,7 @@ declare -A seen=()
 declare -a formats=()
 for format in "${requested[@]}"; do
     case "$format" in
-        source | portable | rpm | opensuse | deb | arch | flatpak | appimage | snap | nix) ;;
+        source | portable | rpm | opensuse | deb | deb-source | arch | flatpak | appimage | snap | nix) ;;
         *) die "unknown format: $format (use --help for the supported list)" ;;
     esac
     if $explicit_formats && ! format_available "$format"; then
@@ -432,6 +436,15 @@ build_deb() {
     record_artifact "$package"
 }
 
+build_deb_source() {
+    build_source
+    log "Building the Debian source package"
+    ./scripts/make-debian-source.sh
+    record_artifact "$dist/pixelkit_${version}.orig.tar.xz"
+    record_artifact "$dist/pixelkit_${debian_version}.debian.tar.xz"
+    record_artifact "$dist/pixelkit_${debian_version}.dsc"
+}
+
 build_arch() {
     local pkgrel
     local source_archive="$dist/pixelkit-${version}-vendor.tar.xz"
@@ -511,6 +524,7 @@ for format in "${formats[@]}"; do
         rpm) build_rpm "Fedora/RHEL" fedora packaging/rpm/pixelkit.spec ;;
         opensuse) build_rpm "openSUSE" opensuse packaging/opensuse/pixelkit.spec ;;
         deb) build_deb ;;
+        deb-source) build_deb_source ;;
         arch) build_arch ;;
         flatpak) build_flatpak ;;
         appimage) build_appimage ;;

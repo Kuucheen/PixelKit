@@ -162,7 +162,7 @@ installed with `sudo dnf builddep packaging/rpm/pixelkit.spec`.
 | Flatpak / Flathub | `packaging/flatpak/` | `./scripts/build-packages.sh flatpak` |
 | Fedora / RHEL / DNF | `packaging/rpm/pixelkit.spec` | `./scripts/build-packages.sh rpm` |
 | openSUSE / Zypper | `packaging/opensuse/pixelkit.spec` | `./scripts/build-packages.sh opensuse` |
-| Debian / Ubuntu / APT | `debian/`, `Cargo.toml` | `./scripts/build-packages.sh deb` |
+| Debian / Ubuntu / APT | `debian/` | `./scripts/build-packages.sh deb-source` |
 | Arch / pacman / AUR | `packaging/arch/PKGBUILD` | `./scripts/build-packages.sh arch` |
 | Snap Store | `snap/snapcraft.yaml` | `./scripts/build-packages.sh snap` |
 | Nix / NixOS | `flake.nix` | `./scripts/build-packages.sh nix` |

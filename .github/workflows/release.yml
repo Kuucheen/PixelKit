@@ -61,13 +61,14 @@ jobs:
       - run: cargo test --all-targets --locked
       - name: Build source, portable, and Debian artifacts
         run: |
-          ./scripts/build-packages.sh --clean --skip-checks source portable deb
+          ./scripts/build-packages.sh --clean --skip-checks source portable deb deb-source
       - uses: actions/upload-artifact@v7
         with:
           name: release-portable-deb-source
           path: |
             dist/*.tar.xz
             dist/*.deb
+            dist/*.dsc
           if-no-files-found: error
           compression-level: 0
 

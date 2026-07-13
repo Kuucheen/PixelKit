@@ -11,6 +11,8 @@ trap 'rm -rf "$staging"' EXIT
 
 mkdir -p "$output" "$staging/$name"
 tar --exclude-vcs --exclude=target --exclude=dist --exclude=vendor --exclude=.cargo \
+    --exclude=.flatpak-builder --exclude=.idea --exclude=AppDir \
+    --exclude='*.AppImage' \
     -cf - . | tar -xf - -C "$staging/$name"
 (
     cd "$staging/$name"

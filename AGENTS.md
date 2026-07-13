@@ -178,6 +178,13 @@ coordinate mismatch.
   - Snap: `snap/snapcraft.yaml`
   - Nix: `flake.nix`
   - AppImage: `packaging/appimage/build-appimage.sh`
+- `./scripts/build-packages.sh --clean deb-source` creates the three standard
+  Debian source artifacts (`.dsc`, `.orig.tar.xz`, and `.debian.tar.xz`) used
+  by OBS. The current OBS project is `home:kuchen:PixelKit`; its Debian 13
+  target must inherit `Debian:13/backports`, while Ubuntu 24.04 uses the
+  versioned `cargo-1.91` and `rustc-1.91` commands. Upload a built source
+  bundle with `./scripts/publish-obs.sh --watch`; it replaces only the standard
+  Debian source artifacts in the OBS package.
 - For iterative changes within one upstream version, run
   `./scripts/build-packages.sh --bump "Short changelog summary"`. The helper
   increments the Fedora `Release`, prepends a Debian changelog revision, and

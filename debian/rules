@@ -3,17 +3,27 @@
 export CARGO_HOME=$(CURDIR)/debian/cargo-home
 export CARGO_NET_OFFLINE=true
 
+# Ubuntu 24.04 ships current Rust releases as versioned commands, while
+# Debian backports and newer Ubuntu releases provide the unversioned names.
+CARGO_BIN := $(shell command -v cargo-1.91 2>/dev/null || command -v cargo)
+RUSTC_BIN := $(shell command -v rustc-1.91 2>/dev/null || command -v rustc)
+export RUSTC=$(RUSTC_BIN)
+
 %:
 	dh $@
 
 override_dh_auto_build:
-	cargo build --release --frozen --offline
+	$(CARGO_BIN) build --release --frozen --offline
 
 override_dh_auto_test:
-	cargo test --release --all-targets --frozen --offline
+	$(CARGO_BIN) test --release --all-targets --frozen --offline
+
+override_dh_auto_clean:
+	$(CARGO_BIN) clean
 
 override_dh_auto_install:
-	$(MAKE) install DESTDIR=$(CURDIR)/debian/pixelkit PREFIX=/usr CARGO="cargo --offline"
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/pixelkit PREFIX=/usr \
+		CARGO="$(CARGO_BIN) --offline"
 
 override_dh_clean:
 	# Cargo verifies every vendored file, including crates' Cargo.toml.orig.

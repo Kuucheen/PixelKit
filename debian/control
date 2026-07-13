@@ -4,8 +4,8 @@ Priority: optional
 Maintainer: PixelKit contributors <70746714+Kuucheen@users.noreply.github.com>
 Build-Depends:
  debhelper-compat (= 13),
- cargo (>= 1.88),
- rustc (>= 1.88),
+ cargo (>= 1.88) | cargo-1.91,
+ rustc (>= 1.88) | rustc-1.91,
  gcc,
  make,
  pkg-config,

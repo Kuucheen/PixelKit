@@ -23,6 +23,7 @@ them explicitly, such as:
 
 ```bash
 ./scripts/build-packages.sh rpm deb
+./scripts/build-packages.sh --clean deb-source
 ./scripts/build-packages.sh --skip-checks flatpak
 make packages PACKAGE_ARGS="rpm deb"
 ```
@@ -89,8 +90,30 @@ and checksum manifest to the GitHub release.
   `sudo dnf install pixelkit`.
 - **AUR:** copy `PKGBUILD`, run `updpkgsums` if switching from the tagged VCS
   source to a release tarball, then generate `.SRCINFO` with `makepkg --printsrcinfo`.
-- **Debian/Ubuntu:** use the vendor archive as the upstream orig tar, then run
-  `dpkg-buildpackage`. Replace `unstable`/maintainer data for the target archive.
+- **Debian/Ubuntu (OBS):** `./scripts/build-packages.sh --clean deb-source`
+  creates the standard `.dsc`, `.orig.tar.xz`, and `.debian.tar.xz` source
+  bundle. `./scripts/publish-obs.sh --watch` replaces the source bundle in the
+  `pixelkit` package under `home:kuchen:PixelKit`, commits it atomically, and
+  follows the remote builds. Debian 13 must build against
+  `Debian:13/backports` to satisfy the Rust 1.88 MSRV; Ubuntu 24.04 uses its
+  versioned Rust 1.91 tools. The configured x86_64 repositories are
+  `Debian_13`, `xUbuntu_24.04`, and `xUbuntu_26.04`.
+
+  To install from the published OBS APT repository, set `repo` to the matching
+  value and add its signing key and source:
+
+  ```bash
+  repo=xUbuntu_24.04 # Debian_13, xUbuntu_24.04, or xUbuntu_26.04
+  base="https://download.opensuse.org/repositories/home:/kuchen:/PixelKit/$repo"
+  sudo apt install curl gpg
+  sudo install -d -m 0755 /etc/apt/keyrings
+  curl -fsSL "$base/Release.key" | gpg --dearmor | \
+    sudo tee /etc/apt/keyrings/pixelkit-obs.gpg >/dev/null
+  echo "deb [signed-by=/etc/apt/keyrings/pixelkit-obs.gpg] $base/ /" | \
+    sudo tee /etc/apt/sources.list.d/pixelkit-obs.list
+  sudo apt update
+  sudo apt install pixelkit
+  ```
 - **Snap Store:** reserve the `pixelkit` name, then `snapcraft upload --release=stable`.
 - **Nixpkgs:** the flake works directly; a nixpkgs PR can translate it to the
   standard package set after the upstream repository exists.
