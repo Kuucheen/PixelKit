@@ -1,3 +1,15 @@
+pixelkit (0.1.1-1) unstable; urgency=medium
+
+  * New upstream release 0.1.1.
+
+ -- PixelKit contributors <70746714+Kuucheen@users.noreply.github.com>  Mon, 13 Jul 2026 13:27:55 +0200
+
+pixelkit (0.1.0-5) unstable; urgency=medium
+
+  * Update application logo.
+
+ -- PixelKit contributors <70746714+Kuucheen@users.noreply.github.com>  Mon, 13 Jul 2026 12:39:36 +0200
+
 pixelkit (0.1.0-4) unstable; urgency=medium
 
   * Publish under the Kuucheen GitHub and application namespaces.

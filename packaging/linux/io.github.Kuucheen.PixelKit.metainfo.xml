@@ -49,6 +49,11 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.1.1" date="2026-07-13">
+      <description>
+        <p>PixelKit 0.1.1 upstream release.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-07-13">
       <description>
         <p>Initial Linux release with Color Picker, Color Editor, Screen Ruler, X11 integration and Wayland portals.</p>

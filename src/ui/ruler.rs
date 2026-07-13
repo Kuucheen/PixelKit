@@ -175,7 +175,7 @@ impl RulerApp {
                             if recapture.clicked() {
                                 self.begin_refresh(ctx);
                             }
-                            if ui.small_button("Close").clicked() {
+                            if ui.button("Close").clicked() {
                                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                             }
                         });
