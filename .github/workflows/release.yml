@@ -62,7 +62,7 @@ jobs:
       - name: Build source, portable, and Debian artifacts
         run: |
           ./scripts/build-packages.sh --clean --skip-checks source portable deb
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-portable-deb-source
           path: |
@@ -87,7 +87,7 @@ jobs:
       - name: Build RPM artifacts
         run: |
           ./scripts/build-packages.sh --clean --skip-checks rpm
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-rpm
           path: dist/*.rpm
@@ -100,7 +100,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: release-*
           path: release
@@ -120,7 +120,7 @@ jobs:
           sha256sum "${artifacts[@]}" > SHA256SUMS
           sha256sum -c SHA256SUMS
       - name: Publish one canonical artifact set
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.validate.outputs.tag }}
           files: release/*
