@@ -81,7 +81,12 @@ and checksum manifest to the GitHub release.
   and proof of namespace ownership.
 - **Fedora/Copr:** build the vendor source archive and `packaging/rpm` spec.
   Fedora inclusion may prefer distro-packaged Rust crates; Copr accepts the
-  vendored release source.
+  vendored release source. PixelKit's current Copr namespace is
+  `kuchen/pixelkit`; submit the generated SRPM with
+  `copr-cli build pixelkit dist/pixelkit-VERSION-RELEASE.fcXX.src.rpm`. After a
+  successful build, users can install it with
+  `sudo dnf copr enable kuchen/pixelkit` followed by
+  `sudo dnf install pixelkit`.
 - **AUR:** copy `PKGBUILD`, run `updpkgsums` if switching from the tagged VCS
   source to a release tarball, then generate `.SRCINFO` with `makepkg --printsrcinfo`.
 - **Debian/Ubuntu:** use the vendor archive as the upstream orig tar, then run

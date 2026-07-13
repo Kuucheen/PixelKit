@@ -29,10 +29,11 @@ jobs:
       - run: desktop-file-validate packaging/linux/io.github.Kuucheen.PixelKit.desktop packaging/linux/pixelkit-autostart.desktop
       - name: Check package automation
         run: |
-          bash -n scripts/build-packages.sh scripts/make-dist.sh packaging/appimage/build-appimage.sh
+          bash -n scripts/build-packages.sh scripts/make-dist.sh scripts/vendor.sh packaging/appimage/build-appimage.sh
           python3 scripts/bump-package-release.py --dry-run "Validate package automation"
           python3 scripts/set-version.py --dry-run 999.0.0
           ./scripts/build-packages.sh --list
+          ./scripts/make-dist.sh
       - name: Check generated Flatpak sources
         run: |
           cp packaging/flatpak/cargo-sources.json /tmp/cargo-sources.json

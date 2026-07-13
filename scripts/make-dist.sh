@@ -15,6 +15,10 @@ tar --exclude-vcs --exclude=target --exclude=dist --exclude=vendor --exclude=.ca
 (
     cd "$staging/$name"
     PIXELKIT_VENDOR_QUIET=1 ./scripts/vendor.sh
+    test -s .cargo/config.toml
+    mkdir -p "$staging/cargo-home"
+    CARGO_HOME="$staging/cargo-home" CARGO_NET_OFFLINE=true \
+        cargo fetch --locked --offline
 )
 tar --sort=name --mtime="@$source_date_epoch" --owner=0 --group=0 --numeric-owner \
     -C "$staging" -cJf "$output/${name}-vendor.tar.xz" "$name"

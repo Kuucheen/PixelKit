@@ -164,6 +164,11 @@ coordinate mismatch.
 - `make dist` remains the low-level command that creates the deterministic
   `dist/pixelkit-VERSION-vendor.tar.xz` with all locked Cargo sources.
   RPM/SRPM builds use this archive offline.
+- Keep the vendored archive's `.cargo/config.toml` explicit and nonempty.
+  `cargo vendor --quiet` suppresses its suggested config output, which once
+  produced an archive that passed locally from Cargo's warm cache but failed
+  in clean COPR chroots at the first dependency. `make-dist.sh` deliberately
+  verifies the archive inputs with an empty `CARGO_HOME` in offline mode.
 - Relevant definitions are:
   - Fedora/RHEL: `packaging/rpm/pixelkit.spec`
   - openSUSE: `packaging/opensuse/pixelkit.spec`

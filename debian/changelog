@@ -1,3 +1,9 @@
+pixelkit (0.1.1-3) unstable; urgency=medium
+
+  * Fix offline vendored source configuration for clean builds.
+
+ -- PixelKit contributors <70746714+Kuucheen@users.noreply.github.com>  Mon, 13 Jul 2026 16:02:06 +0200
+
 pixelkit (0.1.1-2) unstable; urgency=medium
 
   * Bigger close button for the ruler.
