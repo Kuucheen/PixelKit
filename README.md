@@ -55,8 +55,8 @@ X11 and Wayland without privileged input or capture hooks.
 - `xdg-desktop-portal` Screenshot and GlobalShortcuts interfaces on Wayland and
   inside Flatpak.
 - A lightweight background mode that does no screen polling while idle.
-- Desktop actions, AppStream metadata, high-resolution icons, man page, and
-  systemd user unit.
+- Desktop actions, AppStream metadata, scalable and high-resolution icons, man
+  page, and systemd user unit.
 - No telemetry, cloud service, network request, root helper, or setuid binary.
 
 The Fedora 44 x86_64 reference build is a 9.2 MB stripped executable. The X11

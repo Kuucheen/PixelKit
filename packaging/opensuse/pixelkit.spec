@@ -45,6 +45,7 @@ make install DESTDIR=%{buildroot} PREFIX=%{_prefix} CARGO="cargo --offline"
 %{_bindir}/pixelkit
 %{_datadir}/applications/io.github.Kuucheen.PixelKit.desktop
 %{_datadir}/metainfo/io.github.Kuucheen.PixelKit.metainfo.xml
+%{_datadir}/icons/hicolor/scalable/apps/io.github.Kuucheen.PixelKit.svg
 %{_datadir}/icons/hicolor/128x128/apps/io.github.Kuucheen.PixelKit.png
 %{_datadir}/icons/hicolor/512x512/apps/io.github.Kuucheen.PixelKit.png
 %{_prefix}/lib/systemd/user/pixelkit.service
@@ -53,4 +54,3 @@ make install DESTDIR=%{buildroot} PREFIX=%{_prefix} CARGO="cargo --offline"
 %changelog
 * Mon Jul 13 2026 PixelKit contributors <70746714+Kuucheen@users.noreply.github.com> - 0.1.1-0
 - Release PixelKit 0.1.1
-

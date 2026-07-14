@@ -15,5 +15,5 @@ export OUTPUT="${OUTPUT:-PixelKit-$(uname -m).AppImage}"
 linuxdeploy \
     --appdir AppDir \
     --desktop-file packaging/linux/io.github.Kuucheen.PixelKit.desktop \
-    --icon-file packaging/linux/512x512/io.github.Kuucheen.PixelKit.png \
+    --icon-file packaging/linux/io.github.Kuucheen.PixelKit.svg \
     --output appimage

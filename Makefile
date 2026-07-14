@@ -24,6 +24,7 @@ install: build
 	install -Dm755 $(BINARY) $(DESTDIR)$(PREFIX)/bin/pixelkit
 	install -Dm644 packaging/linux/$(APP_ID).desktop $(DESTDIR)$(PREFIX)/share/applications/$(APP_ID).desktop
 	install -Dm644 packaging/linux/$(APP_ID).metainfo.xml $(DESTDIR)$(PREFIX)/share/metainfo/$(APP_ID).metainfo.xml
+	install -Dm644 packaging/linux/$(APP_ID).svg $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/$(APP_ID).svg
 	install -Dm644 packaging/linux/$(APP_ID).png $(DESTDIR)$(PREFIX)/share/icons/hicolor/128x128/apps/$(APP_ID).png
 	install -Dm644 packaging/linux/512x512/$(APP_ID).png $(DESTDIR)$(PREFIX)/share/icons/hicolor/512x512/apps/$(APP_ID).png
 	install -Dm644 packaging/linux/pixelkit.service $(DESTDIR)$(SYSTEMD_USER_UNIT_DIR)/pixelkit.service
@@ -35,6 +36,7 @@ uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/bin/pixelkit
 	rm -f $(DESTDIR)$(PREFIX)/share/applications/$(APP_ID).desktop
 	rm -f $(DESTDIR)$(PREFIX)/share/metainfo/$(APP_ID).metainfo.xml
+	rm -f $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/$(APP_ID).svg
 	rm -f $(DESTDIR)$(PREFIX)/share/icons/hicolor/128x128/apps/$(APP_ID).png
 	rm -f $(DESTDIR)$(PREFIX)/share/icons/hicolor/512x512/apps/$(APP_ID).png
 	rm -f $(DESTDIR)$(SYSTEMD_USER_UNIT_DIR)/pixelkit.service
