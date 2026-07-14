@@ -243,6 +243,13 @@ impl HubApp {
             .changed();
         self.dirty |= ui
             .checkbox(
+                &mut self.settings.picker.single_editor_instance,
+                "Keep only one color editor open",
+            )
+            .on_hover_text("Opening a new editor closes the existing editor first.")
+            .changed();
+        self.dirty |= ui
+            .checkbox(
                 &mut self.settings.picker.interactive_portal,
                 "Let the Wayland portal ask which screen/area to capture",
             )

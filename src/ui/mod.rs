@@ -129,6 +129,17 @@ fn spawn_action(action: &str) -> Result<()> {
     Ok(())
 }
 
+fn spawn_editor(color: Rgb) -> Result<()> {
+    let executable = std::env::current_exe()?;
+    Command::new(executable)
+        .args(["color-editor", "--color", &color.hex()])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::inherit())
+        .spawn()?;
+    Ok(())
+}
+
 fn copy_text(ctx: &egui::Context, value: String) {
     // The egui path integrates with the active Wayland/X11 event loop. Arboard
     // is also attempted so clipboard managers can retain the value when a

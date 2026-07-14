@@ -135,6 +135,7 @@ pub struct PickerSettings {
     pub show_color_name: bool,
     pub history_limit: usize,
     pub default_editor_view: EditorView,
+    pub single_editor_instance: bool,
     pub formats: Vec<FormatSetting>,
     /// Let the portal show its target selector. This may add an extra prompt,
     /// but is useful on multi-monitor Wayland sessions.
@@ -153,7 +154,8 @@ impl Default for PickerSettings {
             change_cursor: false,
             show_color_name: false,
             history_limit: 20,
-            default_editor_view: EditorView::Full,
+            default_editor_view: EditorView::Compact,
+            single_editor_instance: true,
             formats: FORMAT_NAMES
                 .iter()
                 .map(|name| FormatSetting {
@@ -351,7 +353,8 @@ mod tests {
             3
         );
         assert_eq!(settings.ruler.pixel_tolerance, 30);
-        assert_eq!(settings.picker.default_editor_view, EditorView::Full);
+        assert_eq!(settings.picker.default_editor_view, EditorView::Compact);
+        assert!(settings.picker.single_editor_instance);
     }
 
     #[test]
@@ -359,17 +362,29 @@ mod tests {
         let settings: Settings =
             serde_json::from_str(r#"{"picker":{"copied_format":"RGB"}}"#).unwrap();
         assert_eq!(settings.picker.copied_format, "RGB");
-        assert_eq!(settings.picker.default_editor_view, EditorView::Full);
+        assert_eq!(settings.picker.default_editor_view, EditorView::Compact);
+        assert!(settings.picker.single_editor_instance);
         assert_eq!(settings.ruler.cross_color, "#FF4500FF");
     }
 
     #[test]
-    fn editor_view_serializes_stably() {
+    fn editor_preferences_serialize_stably() {
+        let settings: Settings = serde_json::from_str(
+            r#"{"picker":{"default_editor_view":"full","single_editor_instance":false}}"#,
+        )
+        .unwrap();
+        assert_eq!(settings.picker.default_editor_view, EditorView::Full);
+        assert!(!settings.picker.single_editor_instance);
+
+        let json = serde_json::to_value(settings).unwrap();
+        assert_eq!(json["picker"]["default_editor_view"], "full");
+        assert_eq!(json["picker"]["single_editor_instance"], false);
+    }
+
+    #[test]
+    fn compact_editor_preference_deserializes() {
         let settings: Settings =
             serde_json::from_str(r#"{"picker":{"default_editor_view":"compact"}}"#).unwrap();
         assert_eq!(settings.picker.default_editor_view, EditorView::Compact);
-
-        let json = serde_json::to_value(settings).unwrap();
-        assert_eq!(json["picker"]["default_editor_view"], "compact");
     }
 }

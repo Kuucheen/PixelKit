@@ -11,13 +11,26 @@ use eframe::egui::{self, Color32, RichText, Stroke, Vec2};
 use serde_json::json;
 use std::{
     collections::BTreeMap,
-    fs,
+    env, fs,
+    os::unix::net::UnixDatagram,
     path::PathBuf,
+    thread,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
+const REPLACE_EDITOR_NOTIFICATION: &[u8] = b"replace\n";
+
 pub fn run_editor(initial: Option<Rgb>) -> anyhow::Result<()> {
     let settings = Settings::load_or_default();
+    if let Some(color) = initial {
+        let mut history = History::load_or_default();
+        let _ = history.push(color, settings.picker.history_limit);
+    }
+    let instance = if settings.picker.single_editor_instance {
+        Some(EditorInstance::replace_existing()?)
+    } else {
+        None
+    };
     let view = settings.picker.default_editor_view;
     let options = native_options_with_min_size(view.window_size(), view.minimum_window_size());
     super::map_eframe(eframe::run_native(
@@ -25,9 +38,98 @@ pub fn run_editor(initial: Option<Rgb>) -> anyhow::Result<()> {
         options,
         Box::new(move |cc| {
             configure_style(&cc.egui_ctx);
-            Ok(Box::new(EditorApp::new(initial, settings)))
+            Ok(Box::new(EditorApp::new(initial, settings, instance)))
         }),
     ))
+}
+
+struct EditorInstance {
+    path: PathBuf,
+    socket: UnixDatagram,
+}
+
+impl EditorInstance {
+    fn replace_existing() -> anyhow::Result<Self> {
+        let runtime = env::var_os("XDG_RUNTIME_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| {
+                env::temp_dir().join(format!("pixelkit-{}", unsafe { libc_getuid() }))
+            });
+        fs::create_dir_all(&runtime)?;
+        let path = runtime.join("pixelkit-editor.sock");
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let mut last_close_request = None;
+        loop {
+            match UnixDatagram::bind(&path) {
+                Ok(socket) => {
+                    socket.set_nonblocking(true)?;
+                    return Ok(Self { path, socket });
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::AddrInUse => {}
+                Err(error) => return Err(error.into()),
+            }
+
+            let should_request_close = last_close_request
+                .is_none_or(|sent: Instant| sent.elapsed() >= Duration::from_millis(250));
+            if should_request_close {
+                let notifier = UnixDatagram::unbound()?;
+                match notifier.send_to(REPLACE_EDITOR_NOTIFICATION, &path) {
+                    Ok(_) => last_close_request = Some(Instant::now()),
+                    Err(error)
+                        if matches!(
+                            error.kind(),
+                            std::io::ErrorKind::ConnectionRefused | std::io::ErrorKind::NotFound
+                        ) =>
+                    {
+                        fs::remove_file(&path)?;
+                        last_close_request = None;
+                        continue;
+                    }
+                    Err(error) => return Err(error.into()),
+                }
+            }
+
+            if Instant::now() >= deadline {
+                return Err(anyhow::anyhow!(
+                    "the existing color editor did not close within 5 seconds"
+                ));
+            }
+            thread::sleep(Duration::from_millis(25));
+        }
+    }
+
+    fn close_requested(&self) -> bool {
+        let mut message = [0_u8; 64];
+        loop {
+            match self.socket.recv(&mut message) {
+                Ok(length) if is_replace_editor_notification(&message[..length]) => return true,
+                Ok(_) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => return false,
+                Err(error) => {
+                    eprintln!("PixelKit: could not receive color editor notification: {error}");
+                    return false;
+                }
+            }
+        }
+    }
+}
+
+impl Drop for EditorInstance {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.path);
+    }
+}
+
+fn is_replace_editor_notification(message: &[u8]) -> bool {
+    message == REPLACE_EDITOR_NOTIFICATION
+}
+
+// Avoid an additional libc crate for one fallback-only numeric identifier.
+unsafe extern "C" {
+    fn getuid() -> u32;
+}
+unsafe fn libc_getuid() -> u32 {
+    unsafe { getuid() }
 }
 
 pub(super) struct EditorApp {
@@ -37,15 +139,13 @@ pub(super) struct EditorApp {
     selected_index: Option<usize>,
     hex_input: String,
     view: EditorView,
+    instance: Option<EditorInstance>,
     message: Option<(String, Instant)>,
 }
 
 impl EditorApp {
-    pub(super) fn new(initial: Option<Rgb>, settings: Settings) -> Self {
-        let mut history = History::load_or_default();
-        if let Some(color) = initial {
-            let _ = history.push(color, settings.picker.history_limit);
-        }
+    fn new(initial: Option<Rgb>, settings: Settings, instance: Option<EditorInstance>) -> Self {
+        let history = History::load_or_default();
         let selected = initial
             .or_else(|| history.colors.first().copied())
             .unwrap_or(Rgb::new(51, 102, 153));
@@ -58,6 +158,7 @@ impl EditorApp {
             selected_index,
             hex_input: selected.hex(),
             view,
+            instance,
             message: None,
         }
     }
@@ -85,6 +186,18 @@ impl EditorApp {
             Ok(()) => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
             Err(error) => self.message(error.to_string()),
         }
+    }
+
+    fn close_if_replaced(&self, ctx: &egui::Context) -> bool {
+        if self
+            .instance
+            .as_ref()
+            .is_some_and(EditorInstance::close_requested)
+        {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            return true;
+        }
+        false
     }
 
     fn history_panel(&mut self, ui: &mut egui::Ui) {
@@ -471,6 +584,9 @@ impl EditorApp {
 
 impl eframe::App for EditorApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if self.close_if_replaced(ctx) {
+            return;
+        }
         if ctx.input(|input| input.key_pressed(egui::Key::Escape)) {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             return;
@@ -503,6 +619,9 @@ impl eframe::App for EditorApp {
                         ui.label(message);
                     });
                 });
+            ctx.request_repaint_after(Duration::from_millis(200));
+        }
+        if self.instance.is_some() {
             ctx.request_repaint_after(Duration::from_millis(200));
         }
     }
@@ -642,4 +761,19 @@ fn export_history(
         fs::write(&path, serde_json::to_vec_pretty(&root)?)?;
     }
     Ok(path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn replacement_notification_is_recognized() {
+        assert!(is_replace_editor_notification(REPLACE_EDITOR_NOTIFICATION));
+    }
+
+    #[test]
+    fn unrelated_editor_notification_is_ignored() {
+        assert!(!is_replace_editor_notification(b"color 336699\n"));
+    }
 }

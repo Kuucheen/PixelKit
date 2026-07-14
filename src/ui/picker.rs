@@ -1,5 +1,5 @@
 use super::{
-    TiledCaptureTexture, color32, configure_style, copy_text, overlay_options, spawn_action,
+    TiledCaptureTexture, color32, configure_style, copy_text, overlay_options, spawn_editor,
     wheel_steps,
 };
 use crate::{
@@ -180,7 +180,7 @@ impl PickerApp {
                 eprintln!("PixelKit: failed to save color history: {error:#}");
             }
             if action == ClickAction::PickThenEditor
-                && let Err(error) = spawn_action("color-editor")
+                && let Err(error) = spawn_editor(color)
             {
                 eprintln!("PixelKit: failed to open editor: {error:#}");
             }
