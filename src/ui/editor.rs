@@ -1,10 +1,11 @@
 use super::{
-    color32, configure_style, contrasting_text, native_options, panel_frame, spawn_action,
+    color32, configure_style, contrasting_text, native_options_with_min_size, panel_frame,
+    spawn_action,
 };
 use crate::{
     APP_NAME,
     color::{Rgb, format_template},
-    config::{History, Settings, data_dir},
+    config::{EditorView, History, Settings, data_dir},
 };
 use eframe::egui::{self, Color32, RichText, Stroke, Vec2};
 use serde_json::json;
@@ -16,13 +17,15 @@ use std::{
 };
 
 pub fn run_editor(initial: Option<Rgb>) -> anyhow::Result<()> {
-    let options = native_options([980.0, 720.0]);
+    let settings = Settings::load_or_default();
+    let view = settings.picker.default_editor_view;
+    let options = native_options_with_min_size(view.window_size(), view.minimum_window_size());
     super::map_eframe(eframe::run_native(
         &format!("Color Editor — {APP_NAME}"),
         options,
         Box::new(move |cc| {
             configure_style(&cc.egui_ctx);
-            Ok(Box::new(EditorApp::new(initial)))
+            Ok(Box::new(EditorApp::new(initial, settings)))
         }),
     ))
 }
@@ -33,12 +36,12 @@ pub(super) struct EditorApp {
     selected: Rgb,
     selected_index: Option<usize>,
     hex_input: String,
+    view: EditorView,
     message: Option<(String, Instant)>,
 }
 
 impl EditorApp {
-    pub(super) fn new(initial: Option<Rgb>) -> Self {
-        let settings = Settings::load_or_default();
+    pub(super) fn new(initial: Option<Rgb>, settings: Settings) -> Self {
         let mut history = History::load_or_default();
         if let Some(color) = initial {
             let _ = history.push(color, settings.picker.history_limit);
@@ -47,12 +50,14 @@ impl EditorApp {
             .or_else(|| history.colors.first().copied())
             .unwrap_or(Rgb::new(51, 102, 153));
         let selected_index = history.colors.iter().position(|color| *color == selected);
+        let view = settings.picker.default_editor_view;
         Self {
             settings,
             history,
             selected,
             selected_index,
             hex_input: selected.hex(),
+            view,
             message: None,
         }
     }
@@ -65,6 +70,21 @@ impl EditorApp {
 
     fn message(&mut self, text: impl Into<String>) {
         self.message = Some((text.into(), Instant::now()));
+    }
+
+    fn switch_view(&mut self, ctx: &egui::Context, view: EditorView) {
+        self.view = view;
+        ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(
+            view.minimum_window_size().into(),
+        ));
+        ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(view.window_size().into()));
+    }
+
+    fn launch_picker(&mut self, ctx: &egui::Context) {
+        match spawn_action("color-picker") {
+            Ok(()) => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
+            Err(error) => self.message(error.to_string()),
+        }
     }
 
     fn history_panel(&mut self, ui: &mut egui::Ui) {
@@ -123,10 +143,7 @@ impl EditorApp {
         ui.heading("Color Editor");
         ui.horizontal(|ui| {
             if ui.button("Pick another color").clicked() {
-                match spawn_action("color-picker") {
-                    Ok(()) => ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close),
-                    Err(error) => self.message(error.to_string()),
-                }
+                self.launch_picker(ui.ctx());
             }
             if ui.button("Settings").clicked() {
                 let _ = spawn_action("settings");
@@ -149,6 +166,9 @@ impl EditorApp {
                     ui.close_menu();
                 }
             });
+            if ui.button("Compact view").clicked() {
+                self.switch_view(ui.ctx(), EditorView::Compact);
+            }
         });
         ui.add_space(10.0);
         let card = egui::Frame::new()
@@ -322,6 +342,125 @@ impl EditorApp {
         });
     }
 
+    fn compact_history(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            ui.strong("History");
+            ui.label(
+                RichText::new(format!("{} colors", self.history.colors.len()))
+                    .small()
+                    .weak(),
+            );
+        });
+        let colors = self.history.colors.clone();
+        egui::ScrollArea::horizontal()
+            .id_salt("compact_history")
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    for (index, color) in colors.into_iter().enumerate() {
+                        let response = ui.add(
+                            egui::Button::new("")
+                                .min_size(Vec2::splat(28.0))
+                                .fill(color32(color))
+                                .selected(self.selected_index == Some(index))
+                                .corner_radius(14),
+                        );
+                        if response.clicked() {
+                            self.select(color, Some(index));
+                        }
+                        response.on_hover_text(format!("#{} — {}", color.hex(), color.name()));
+                    }
+                });
+            });
+    }
+
+    fn compact_formats(&mut self, ui: &mut egui::Ui) {
+        ui.strong("Color formats");
+        ui.label(RichText::new("Click a value to copy it.").small().weak());
+        ui.add_space(4.0);
+
+        let formats = self
+            .settings
+            .picker
+            .formats
+            .iter()
+            .filter(|format| format.enabled)
+            .map(|format| {
+                (
+                    format.name.clone(),
+                    format_template(self.selected, &format.template),
+                )
+            })
+            .collect::<Vec<_>>();
+        if formats.is_empty() {
+            ui.label(RichText::new("No formats are enabled in Settings.").weak());
+            return;
+        }
+
+        egui::ScrollArea::vertical()
+            .id_salt("compact_formats")
+            .show(ui, |ui| {
+                for (name, value) in formats {
+                    panel_frame().inner_margin(8).show(ui, |ui| {
+                        ui.label(RichText::new(name.to_uppercase()).small().strong());
+                        let response = ui.add(
+                            egui::Label::new(RichText::new(&value).monospace())
+                                .sense(egui::Sense::click()),
+                        );
+                        if response.clicked() {
+                            ui.ctx().copy_text(value.clone());
+                            self.message(format!("Copied {value}"));
+                        }
+                    });
+                    ui.add_space(4.0);
+                }
+            });
+    }
+
+    fn compact_editor(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            if ui.button("Pick another color").clicked() {
+                self.launch_picker(ui.ctx());
+            }
+            if ui.button("Settings").clicked() {
+                let _ = spawn_action("settings");
+            }
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui.button("Full editor").clicked() {
+                    self.switch_view(ui.ctx(), EditorView::Full);
+                }
+            });
+        });
+        ui.separator();
+        self.compact_history(ui);
+        ui.separator();
+
+        ui.columns(2, |columns| {
+            columns[0].vertical_centered(|ui| {
+                let side = ui.available_width().min(180.0);
+                let card = egui::Frame::new()
+                    .fill(color32(self.selected))
+                    .corner_radius(12)
+                    .stroke(Stroke::new(1.0, Color32::from_white_alpha(45)));
+                card.show(ui, |ui| {
+                    ui.set_min_size(Vec2::new(side, side));
+                });
+                ui.add_space(8.0);
+                ui.label(
+                    RichText::new(format!("#{}", self.selected.hex()))
+                        .monospace()
+                        .strong(),
+                );
+                ui.label(RichText::new(self.selected.name()).weak());
+                if ui.button("Copy default format").clicked() {
+                    let text = format_template(self.selected, self.settings.selected_format());
+                    ui.ctx().copy_text(text.clone());
+                    self.message(format!("Copied {text}"));
+                }
+            });
+            self.compact_formats(&mut columns[1]);
+        });
+    }
+
     fn export(&mut self, group_by_format: bool, text: bool) {
         match export_history(&self.history, &self.settings, group_by_format, text) {
             Ok(path) => self.message(format!("Exported to {}", path.display())),
@@ -336,17 +475,24 @@ impl eframe::App for EditorApp {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             return;
         }
-        egui::SidePanel::left("history")
-            .default_width(245.0)
-            .min_width(190.0)
-            .show(ctx, |ui| self.history_panel(ui));
-        egui::SidePanel::right("formats")
-            .default_width(285.0)
-            .min_width(230.0)
-            .show(ctx, |ui| self.formats(ui));
-        egui::CentralPanel::default().show(ctx, |ui| {
-            egui::ScrollArea::vertical().show(ui, |ui| self.color_editor(ui))
-        });
+        match self.view {
+            EditorView::Compact => {
+                egui::CentralPanel::default().show(ctx, |ui| self.compact_editor(ui));
+            }
+            EditorView::Full => {
+                egui::SidePanel::left("history")
+                    .default_width(245.0)
+                    .min_width(190.0)
+                    .show(ctx, |ui| self.history_panel(ui));
+                egui::SidePanel::right("formats")
+                    .default_width(285.0)
+                    .min_width(230.0)
+                    .show(ctx, |ui| self.formats(ui));
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    egui::ScrollArea::vertical().show(ui, |ui| self.color_editor(ui))
+                });
+            }
+        }
         if let Some((message, instant)) = &self.message
             && instant.elapsed() < Duration::from_secs(5)
         {
@@ -358,6 +504,22 @@ impl eframe::App for EditorApp {
                     });
                 });
             ctx.request_repaint_after(Duration::from_millis(200));
+        }
+    }
+}
+
+impl EditorView {
+    const fn window_size(self) -> [f32; 2] {
+        match self {
+            Self::Compact => [540.0, 480.0],
+            Self::Full => [980.0, 720.0],
+        }
+    }
+
+    const fn minimum_window_size(self) -> [f32; 2] {
+        match self {
+            Self::Compact => [440.0, 380.0],
+            Self::Full => [560.0, 420.0],
         }
     }
 }

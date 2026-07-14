@@ -36,6 +36,25 @@ impl ClickAction {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
+pub enum EditorView {
+    Compact,
+    #[default]
+    Full,
+}
+
+impl EditorView {
+    pub const ALL: [Self; 2] = [Self::Compact, Self::Full];
+
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Compact => "Compact",
+            Self::Full => "Full editor",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
 pub enum RulerMode {
     #[default]
     Bounds,
@@ -115,6 +134,7 @@ pub struct PickerSettings {
     pub change_cursor: bool,
     pub show_color_name: bool,
     pub history_limit: usize,
+    pub default_editor_view: EditorView,
     pub formats: Vec<FormatSetting>,
     /// Let the portal show its target selector. This may add an extra prompt,
     /// but is useful on multi-monitor Wayland sessions.
@@ -133,6 +153,7 @@ impl Default for PickerSettings {
             change_cursor: false,
             show_color_name: false,
             history_limit: 20,
+            default_editor_view: EditorView::Full,
             formats: FORMAT_NAMES
                 .iter()
                 .map(|name| FormatSetting {
@@ -330,6 +351,7 @@ mod tests {
             3
         );
         assert_eq!(settings.ruler.pixel_tolerance, 30);
+        assert_eq!(settings.picker.default_editor_view, EditorView::Full);
     }
 
     #[test]
@@ -337,6 +359,17 @@ mod tests {
         let settings: Settings =
             serde_json::from_str(r#"{"picker":{"copied_format":"RGB"}}"#).unwrap();
         assert_eq!(settings.picker.copied_format, "RGB");
+        assert_eq!(settings.picker.default_editor_view, EditorView::Full);
         assert_eq!(settings.ruler.cross_color, "#FF4500FF");
+    }
+
+    #[test]
+    fn editor_view_serializes_stably() {
+        let settings: Settings =
+            serde_json::from_str(r#"{"picker":{"default_editor_view":"compact"}}"#).unwrap();
+        assert_eq!(settings.picker.default_editor_view, EditorView::Compact);
+
+        let json = serde_json::to_value(settings).unwrap();
+        assert_eq!(json["picker"]["default_editor_view"], "compact");
     }
 }

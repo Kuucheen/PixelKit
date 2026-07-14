@@ -2,7 +2,7 @@ use super::{configure_style, native_options, panel_frame, parse_rgba, spawn_acti
 use crate::{
     APP_NAME, VERSION,
     color::{FORMAT_NAMES, Rgb, format_template},
-    config::{ActivationAction, ClickAction, History, RulerMode, Settings, Unit},
+    config::{ActivationAction, ClickAction, EditorView, History, RulerMode, Settings, Unit},
 };
 use eframe::egui::{self, Color32, RichText};
 use std::{
@@ -164,6 +164,21 @@ impl HubApp {
                                 "Open editor",
                             )
                             .changed();
+                    });
+                ui.end_row();
+                ui.label("Default editor view");
+                egui::ComboBox::from_id_salt("default_editor_view")
+                    .selected_text(self.settings.picker.default_editor_view.label())
+                    .show_ui(ui, |ui| {
+                        for view in EditorView::ALL {
+                            self.dirty |= ui
+                                .selectable_value(
+                                    &mut self.settings.picker.default_editor_view,
+                                    view,
+                                    view.label(),
+                                )
+                                .changed();
+                        }
                     });
                 ui.end_row();
                 ui.label("Copied format");

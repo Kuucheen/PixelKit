@@ -53,12 +53,16 @@ impl eframe::App for ErrorApp {
 }
 
 fn native_options(size: [f32; 2]) -> eframe::NativeOptions {
+    native_options_with_min_size(size, [560.0, 420.0])
+}
+
+fn native_options_with_min_size(size: [f32; 2], min_size: [f32; 2]) -> eframe::NativeOptions {
     eframe::NativeOptions {
         viewport: ViewportBuilder::default()
             .with_app_id(APP_ID)
             .with_title(APP_NAME)
             .with_inner_size(size)
-            .with_min_inner_size([560.0, 420.0])
+            .with_min_inner_size(min_size)
             .with_icon(app_icon()),
         renderer: eframe::Renderer::Glow,
         ..Default::default()
