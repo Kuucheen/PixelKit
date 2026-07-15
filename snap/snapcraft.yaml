@@ -1,6 +1,6 @@
 name: pixelkit
 base: core24
-version: '0.1.1'
+version: '0.1.2'
 summary: Native Linux color picker and screen ruler
 description: |
   PixelKit provides a magnified system-wide color picker, color editor, and

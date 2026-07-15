@@ -1,3 +1,9 @@
+pixelkit (0.1.2-1) unstable; urgency=medium
+
+  * New upstream release 0.1.2.
+
+ -- PixelKit contributors <70746714+Kuucheen@users.noreply.github.com>  Wed, 15 Jul 2026 14:35:32 +0200
+
 pixelkit (0.1.1-4) unstable; urgency=medium
 
   * Republish Debian and Ubuntu packages after OBS signing-key setup.
