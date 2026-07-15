@@ -1,4 +1,4 @@
-![PixelKit — precision tools for Linux](docs/media-thumbnail-5to1.png)
+[![PixelKit — precision tools for Linux](docs/media-thumbnail-5to1.png)](https://github.com/user-attachments/assets/fd06e8b0-96c1-4ea9-b514-56c151987239)
 
 # PixelKit
 
@@ -9,6 +9,10 @@ X11 and Wayland without privileged input or capture hooks.
 
 > PixelKit is independent of Microsoft and PowerToys. PowerToys was used as the
 > MIT-licensed behavioral reference included beside this project.
+
+## See PixelKit in action
+
+https://github.com/user-attachments/assets/fd06e8b0-96c1-4ea9-b514-56c151987239
 
 ## Features
 
