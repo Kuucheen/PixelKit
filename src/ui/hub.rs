@@ -355,7 +355,11 @@ impl HubApp {
                         .changed();
                     let color = parse_rgba(&self.settings.ruler.cross_color)
                         .unwrap_or(Color32::TRANSPARENT);
-                    ui.colored_label(color, "●");
+                    let (preview, _) = ui.allocate_exact_size(
+                        egui::Vec2::splat(ui.spacing().interact_size.y),
+                        egui::Sense::hover(),
+                    );
+                    ui.painter().circle_filled(preview.center(), 5.0, color);
                 });
                 ui.end_row();
                 ui.label("Fallback display DPI");
