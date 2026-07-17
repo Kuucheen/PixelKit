@@ -332,6 +332,11 @@ fn contrasting_text(color: Rgb) -> Color32 {
 }
 
 fn parse_rgba(value: &str) -> Option<Color32> {
+    let [r, g, b, a] = parse_rgba_bytes(value)?;
+    Some(Color32::from_rgba_unmultiplied(r, g, b, a))
+}
+
+fn parse_rgba_bytes(value: &str) -> Option<[u8; 4]> {
     let value = value.trim().trim_start_matches('#');
     if value.len() != 6 && value.len() != 8 {
         return None;
@@ -344,7 +349,41 @@ fn parse_rgba(value: &str) -> Option<Color32> {
     } else {
         255
     };
-    Some(Color32::from_rgba_unmultiplied(r, g, b, a))
+    Some([r, g, b, a])
+}
+
+fn format_rgba_hex([r, g, b, a]: [u8; 4]) -> String {
+    format!("#{r:02X}{g:02X}{b:02X}{a:02X}")
+}
+
+fn rgba_hex_input(ui: &mut egui::Ui, value: &mut String) -> egui::Response {
+    ui.horizontal(|ui| {
+        let text_response = ui.text_edit_singleline(value);
+        let mut rgba = parse_rgba_bytes(value).unwrap_or([0, 0, 0, 0]);
+
+        // Egui's color picker auto-sizes its channel DragValues from their current
+        // text. Give popup U8 and float values one stable, compact field width.
+        let original_style = ui.ctx().style();
+        let mut picker_style = (*original_style).clone();
+        picker_style.spacing.interact_size.x = 64.0;
+        picker_style.spacing.button_padding.x = 6.0;
+        picker_style.spacing.item_spacing.x = 6.0;
+        picker_style.drag_value_text_style = egui::TextStyle::Monospace;
+        ui.ctx().set_style(picker_style);
+        let picker_response = ui
+            .color_edit_button_srgba_unmultiplied(&mut rgba)
+            .on_hover_text("Choose a color and opacity");
+        let numeric_color_space = ui.ctx().style().visuals.numeric_color_space;
+        let mut restored_style = (*original_style).clone();
+        restored_style.visuals.numeric_color_space = numeric_color_space;
+        ui.ctx().set_style(restored_style);
+
+        if picker_response.changed() {
+            *value = format_rgba_hex(rgba);
+        }
+        text_response.union(picker_response)
+    })
+    .inner
 }
 
 fn panel_frame() -> egui::Frame {
@@ -358,6 +397,14 @@ fn panel_frame() -> egui::Frame {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rgba_hex_round_trip_preserves_alpha_and_transparent_rgb() {
+        for rgba in [[255, 69, 0, 128], [255, 69, 0, 0], [0, 0, 0, 255]] {
+            assert_eq!(parse_rgba_bytes(&format_rgba_hex(rgba)), Some(rgba));
+        }
+        assert_eq!(parse_rgba_bytes("#FF4500"), Some([255, 69, 0, 255]));
+    }
 
     #[test]
     fn capture_tiles_cover_the_full_image_without_scaling() {

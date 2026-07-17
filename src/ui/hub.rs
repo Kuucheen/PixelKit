@@ -1,4 +1,4 @@
-use super::{configure_style, native_options, panel_frame, parse_rgba, spawn_action};
+use super::{configure_style, native_options, panel_frame, rgba_hex_input, spawn_action};
 use crate::{
     APP_NAME, VERSION,
     color::{FORMAT_NAMES, Rgb, format_template},
@@ -7,7 +7,7 @@ use crate::{
         Settings, Unit,
     },
 };
-use eframe::egui::{self, Color32, RichText};
+use eframe::egui::{self, RichText};
 use std::{
     process::{Command, Stdio},
     time::{Duration, Instant},
@@ -363,18 +363,7 @@ impl HubApp {
                 });
                 ui.end_row();
                 ui.label("Crosshair color");
-                ui.horizontal(|ui| {
-                    self.dirty |= ui
-                        .text_edit_singleline(&mut self.settings.ruler.cross_color)
-                        .changed();
-                    let color = parse_rgba(&self.settings.ruler.cross_color)
-                        .unwrap_or(Color32::TRANSPARENT);
-                    let (preview, _) = ui.allocate_exact_size(
-                        egui::Vec2::splat(ui.spacing().interact_size.y),
-                        egui::Sense::hover(),
-                    );
-                    ui.painter().circle_filled(preview.center(), 5.0, color);
-                });
+                self.dirty |= rgba_hex_input(ui, &mut self.settings.ruler.cross_color).changed();
                 ui.end_row();
                 ui.label("Fallback display DPI");
                 self.dirty |= ui
