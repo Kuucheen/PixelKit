@@ -2,7 +2,7 @@ use anyhow::{Context, Result, bail};
 use pixelkit::{
     APP_NAME, VERSION,
     color::{FORMAT_NAMES, Rgb, format_named},
-    config::{history_path, settings_path},
+    config::{EditorView, history_path, settings_path},
     daemon, ui,
 };
 use std::{env, path::PathBuf};
@@ -44,7 +44,10 @@ fn run() -> Result<()> {
         "settings" | "gui" => ui::run_hub(),
         "color-picker" | "picker" => ui::run_picker(image_argument(&rest)?.as_deref()),
         "screen-ruler" | "ruler" => ui::run_ruler(image_argument(&rest)?.as_deref()),
-        "color-editor" | "editor" => ui::run_editor(color_argument(&rest)?),
+        "color-editor" | "editor" => {
+            let arguments = editor_arguments(&rest)?;
+            ui::run_editor(arguments.initial, arguments.view, arguments.record_initial)
+        }
         "daemon" => daemon::run(),
         "configure-shortcuts" => daemon::configure_shortcuts(),
         "formats" => print_formats(&rest),
@@ -78,17 +81,51 @@ fn image_argument(arguments: &[std::ffi::OsString]) -> Result<Option<PathBuf>> {
     bail!("expected --image <PNG>")
 }
 
-fn color_argument(arguments: &[std::ffi::OsString]) -> Result<Option<Rgb>> {
-    if arguments.is_empty() {
-        return Ok(None);
+#[derive(Debug, Default, PartialEq, Eq)]
+struct EditorArguments {
+    initial: Option<Rgb>,
+    view: Option<EditorView>,
+    record_initial: bool,
+}
+
+fn editor_arguments(arguments: &[std::ffi::OsString]) -> Result<EditorArguments> {
+    let mut parsed = EditorArguments::default();
+    let mut index = 0;
+    while index < arguments.len() {
+        let flag = arguments[index]
+            .to_str()
+            .context("editor option is not valid UTF-8")?;
+        let value = arguments
+            .get(index + 1)
+            .context("editor option is missing a value")?
+            .to_str()
+            .context("editor option value is not valid UTF-8")?;
+        match flag {
+            "--color" | "--selection" => {
+                if parsed.initial.is_some() {
+                    bail!("editor color was specified more than once");
+                }
+                parsed.initial = Some(
+                    Rgb::parse_hex(value)
+                        .context("expected a 3-, 6-, or 8-digit hexadecimal color")?,
+                );
+                parsed.record_initial = flag == "--color";
+            }
+            "--view" => {
+                if parsed.view.is_some() {
+                    bail!("editor view was specified more than once");
+                }
+                parsed.view = Some(match value {
+                    "compact" => EditorView::Compact,
+                    "full" => EditorView::Full,
+                    _ => bail!("expected editor view to be compact or full"),
+                });
+            }
+            _ => bail!("unknown editor option: {flag}"),
+        }
+        index += 2;
     }
-    if arguments.len() == 2 && arguments[0] == "--color" {
-        let value = arguments[1].to_str().context("color is not valid UTF-8")?;
-        return Rgb::parse_hex(value)
-            .map(Some)
-            .context("expected a 3-, 6-, or 8-digit hexadecimal color");
-    }
-    bail!("expected --color <HEX>")
+    Ok(parsed)
 }
 
 fn print_formats(arguments: &[std::ffi::OsString]) -> Result<()> {
@@ -112,7 +149,7 @@ Native Linux color picker and screen ruler.
 USAGE:
     pixelkit [settings]
     pixelkit color-picker [--image FILE.png]
-    pixelkit color-editor [--color HEX]
+    pixelkit color-editor [--color HEX] [--view compact|full]
     pixelkit screen-ruler [--image FILE.png]
     pixelkit daemon
     pixelkit configure-shortcuts
@@ -123,4 +160,33 @@ The --image option runs either overlay against a PNG and is useful for demos,
 automated UI tests, and desktops where screen-capture permissions are disabled.
 "#
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ffi::OsString;
+
+    #[test]
+    fn picked_editor_color_is_recorded() {
+        let arguments = [OsString::from("--color"), OsString::from("a201ff")];
+        let parsed = editor_arguments(&arguments).unwrap();
+        assert_eq!(parsed.initial, Some(Rgb::new(162, 1, 255)));
+        assert!(parsed.record_initial);
+        assert_eq!(parsed.view, None);
+    }
+
+    #[test]
+    fn editor_view_handoff_preserves_selection_without_recording_it() {
+        let arguments = [
+            OsString::from("--selection"),
+            OsString::from("a201ff"),
+            OsString::from("--view"),
+            OsString::from("compact"),
+        ];
+        let parsed = editor_arguments(&arguments).unwrap();
+        assert_eq!(parsed.initial, Some(Rgb::new(162, 1, 255)));
+        assert!(!parsed.record_initial);
+        assert_eq!(parsed.view, Some(EditorView::Compact));
+    }
 }

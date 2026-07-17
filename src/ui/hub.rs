@@ -2,7 +2,10 @@ use super::{configure_style, native_options, panel_frame, parse_rgba, spawn_acti
 use crate::{
     APP_NAME, VERSION,
     color::{FORMAT_NAMES, Rgb, format_template},
-    config::{ActivationAction, ClickAction, EditorView, History, RulerMode, Settings, Unit},
+    config::{
+        ActivationAction, ClickAction, EditorView, EditorViewSwitchPosition, History, RulerMode,
+        Settings, Unit,
+    },
 };
 use eframe::egui::{self, Color32, RichText};
 use std::{
@@ -176,6 +179,21 @@ impl HubApp {
                                     &mut self.settings.picker.default_editor_view,
                                     view,
                                     view.label(),
+                                )
+                                .changed();
+                        }
+                    });
+                ui.end_row();
+                ui.label("View switch position");
+                egui::ComboBox::from_id_salt("editor_view_switch_position")
+                    .selected_text(self.settings.picker.editor_view_switch_position.label())
+                    .show_ui(ui, |ui| {
+                        for position in EditorViewSwitchPosition::ALL {
+                            self.dirty |= ui
+                                .selectable_value(
+                                    &mut self.settings.picker.editor_view_switch_position,
+                                    position,
+                                    position.label(),
                                 )
                                 .changed();
                         }

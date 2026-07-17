@@ -15,7 +15,7 @@ use std::{path::Path, sync::Arc};
 pub fn run_picker(image_path: Option<&Path>) -> anyhow::Result<()> {
     let settings = Settings::load_or_default();
     if settings.picker.activation_action == ActivationAction::Editor && image_path.is_none() {
-        return super::run_editor(None);
+        return super::run_editor(None, None, false);
     }
     let frame = if let Some(path) = image_path {
         CaptureFrame::from_path(path, settings.ruler.fallback_dpi)?

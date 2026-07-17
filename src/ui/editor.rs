@@ -5,7 +5,7 @@ use super::{
 use crate::{
     APP_NAME,
     color::{Rgb, format_template},
-    config::{EditorView, History, Settings, data_dir},
+    config::{EditorView, EditorViewSwitchPosition, History, Settings, data_dir},
 };
 use eframe::egui::{self, Color32, RichText, Stroke, Vec2};
 use serde_json::json;
@@ -14,15 +14,20 @@ use std::{
     env, fs,
     os::unix::net::UnixDatagram,
     path::PathBuf,
+    process::{Command, Stdio},
     thread,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 const REPLACE_EDITOR_NOTIFICATION: &[u8] = b"replace\n";
 
-pub fn run_editor(initial: Option<Rgb>) -> anyhow::Result<()> {
+pub fn run_editor(
+    initial: Option<Rgb>,
+    view_override: Option<EditorView>,
+    record_initial: bool,
+) -> anyhow::Result<()> {
     let settings = Settings::load_or_default();
-    if let Some(color) = initial {
+    if record_initial && let Some(color) = initial {
         let mut history = History::load_or_default();
         let _ = history.push(color, settings.picker.history_limit);
     }
@@ -31,14 +36,14 @@ pub fn run_editor(initial: Option<Rgb>) -> anyhow::Result<()> {
     } else {
         None
     };
-    let view = settings.picker.default_editor_view;
+    let view = view_override.unwrap_or(settings.picker.default_editor_view);
     let options = native_options_with_min_size(view.window_size(), view.minimum_window_size());
     super::map_eframe(eframe::run_native(
         &format!("Color Editor — {APP_NAME}"),
         options,
         Box::new(move |cc| {
             configure_style(&cc.egui_ctx);
-            Ok(Box::new(EditorApp::new(initial, settings, instance)))
+            Ok(Box::new(EditorApp::new(initial, settings, instance, view)))
         }),
     ))
 }
@@ -144,13 +149,17 @@ pub(super) struct EditorApp {
 }
 
 impl EditorApp {
-    fn new(initial: Option<Rgb>, settings: Settings, instance: Option<EditorInstance>) -> Self {
+    fn new(
+        initial: Option<Rgb>,
+        settings: Settings,
+        instance: Option<EditorInstance>,
+        view: EditorView,
+    ) -> Self {
         let history = History::load_or_default();
         let selected = initial
             .or_else(|| history.colors.first().copied())
             .unwrap_or(Rgb::new(51, 102, 153));
         let selected_index = history.colors.iter().position(|color| *color == selected);
-        let view = settings.picker.default_editor_view;
         Self {
             settings,
             history,
@@ -174,11 +183,36 @@ impl EditorApp {
     }
 
     fn switch_view(&mut self, ctx: &egui::Context, view: EditorView) {
+        let target_size = Vec2::from(view.window_size());
+        if self.settings.picker.editor_view_switch_position == EditorViewSwitchPosition::TopLeft {
+            self.view = view;
+            ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(
+                view.minimum_window_size().into(),
+            ));
+            ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(target_size));
+            return;
+        }
+        let centered_position = ctx.input(|input| {
+            let viewport = input.viewport();
+            Some(centered_view_position(
+                viewport.outer_rect?,
+                viewport.inner_rect?.size(),
+                target_size,
+            ))
+        });
+        let Some(centered_position) = centered_position else {
+            match reopen_editor(self.selected, view) {
+                Ok(()) => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
+                Err(error) => self.message(format!("Could not switch editor view: {error}")),
+            }
+            return;
+        };
         self.view = view;
         ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(
             view.minimum_window_size().into(),
         ));
-        ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(view.window_size().into()));
+        ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(target_size));
+        ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(centered_position));
     }
 
     fn launch_picker(&mut self, ctx: &egui::Context) {
@@ -652,6 +686,30 @@ impl EditorView {
     }
 }
 
+fn centered_view_position(
+    outer_rect: egui::Rect,
+    current_inner_size: Vec2,
+    target_inner_size: Vec2,
+) -> egui::Pos2 {
+    outer_rect.min + (current_inner_size - target_inner_size) / 2.0
+}
+
+fn reopen_editor(color: Rgb, view: EditorView) -> anyhow::Result<()> {
+    let executable = env::current_exe()?;
+    let color = color.hex();
+    let view = match view {
+        EditorView::Compact => "compact",
+        EditorView::Full => "full",
+    };
+    Command::new(executable)
+        .args(["color-editor", "--selection", &color, "--view", view])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::inherit())
+        .spawn()?;
+    Ok(())
+}
+
 fn variations(color: Rgb) -> [Rgb; 4] {
     let (h, s, v) = color.hsv();
     let high = if 1.0 - v < 0.15 { 1.0 } else { 0.0 };
@@ -784,5 +842,23 @@ mod tests {
     #[test]
     fn unrelated_editor_notification_is_ignored() {
         assert!(!is_replace_editor_notification(b"color 336699\n"));
+    }
+
+    #[test]
+    fn switching_editor_views_preserves_the_window_center() {
+        let full_outer =
+            egui::Rect::from_min_size(egui::pos2(100.0, 80.0), egui::vec2(1_000.0, 760.0));
+        let full_inner = Vec2::new(980.0, 720.0);
+        let compact_inner = Vec2::new(540.0, 480.0);
+
+        let compact_position = centered_view_position(full_outer, full_inner, compact_inner);
+        assert_eq!(compact_position, egui::pos2(320.0, 200.0));
+
+        let compact_outer = egui::Rect::from_min_size(
+            compact_position,
+            compact_inner + (full_outer.size() - full_inner),
+        );
+        let restored_position = centered_view_position(compact_outer, compact_inner, full_inner);
+        assert_eq!(restored_position, full_outer.min);
     }
 }

@@ -55,6 +55,25 @@ impl EditorView {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
+pub enum EditorViewSwitchPosition {
+    #[default]
+    Centered,
+    TopLeft,
+}
+
+impl EditorViewSwitchPosition {
+    pub const ALL: [Self; 2] = [Self::Centered, Self::TopLeft];
+
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Centered => "Keep window centered",
+            Self::TopLeft => "Keep top-left corner",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
 pub enum RulerMode {
     #[default]
     Bounds,
@@ -135,6 +154,7 @@ pub struct PickerSettings {
     pub show_color_name: bool,
     pub history_limit: usize,
     pub default_editor_view: EditorView,
+    pub editor_view_switch_position: EditorViewSwitchPosition,
     pub single_editor_instance: bool,
     pub formats: Vec<FormatSetting>,
     /// Let the portal show its target selector. This may add an extra prompt,
@@ -155,6 +175,7 @@ impl Default for PickerSettings {
             show_color_name: false,
             history_limit: 20,
             default_editor_view: EditorView::Compact,
+            editor_view_switch_position: EditorViewSwitchPosition::Centered,
             single_editor_instance: true,
             formats: FORMAT_NAMES
                 .iter()
@@ -354,6 +375,10 @@ mod tests {
         );
         assert_eq!(settings.ruler.pixel_tolerance, 30);
         assert_eq!(settings.picker.default_editor_view, EditorView::Compact);
+        assert_eq!(
+            settings.picker.editor_view_switch_position,
+            EditorViewSwitchPosition::Centered
+        );
         assert!(settings.picker.single_editor_instance);
     }
 
@@ -363,6 +388,10 @@ mod tests {
             serde_json::from_str(r#"{"picker":{"copied_format":"RGB"}}"#).unwrap();
         assert_eq!(settings.picker.copied_format, "RGB");
         assert_eq!(settings.picker.default_editor_view, EditorView::Compact);
+        assert_eq!(
+            settings.picker.editor_view_switch_position,
+            EditorViewSwitchPosition::Centered
+        );
         assert!(settings.picker.single_editor_instance);
         assert_eq!(settings.ruler.cross_color, "#FF4500FF");
     }
@@ -370,14 +399,19 @@ mod tests {
     #[test]
     fn editor_preferences_serialize_stably() {
         let settings: Settings = serde_json::from_str(
-            r#"{"picker":{"default_editor_view":"full","single_editor_instance":false}}"#,
+            r#"{"picker":{"default_editor_view":"full","editor_view_switch_position":"top_left","single_editor_instance":false}}"#,
         )
         .unwrap();
         assert_eq!(settings.picker.default_editor_view, EditorView::Full);
+        assert_eq!(
+            settings.picker.editor_view_switch_position,
+            EditorViewSwitchPosition::TopLeft
+        );
         assert!(!settings.picker.single_editor_instance);
 
         let json = serde_json::to_value(settings).unwrap();
         assert_eq!(json["picker"]["default_editor_view"], "full");
+        assert_eq!(json["picker"]["editor_view_switch_position"], "top_left");
         assert_eq!(json["picker"]["single_editor_instance"], false);
     }
 
