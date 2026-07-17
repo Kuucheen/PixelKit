@@ -356,28 +356,103 @@ fn format_rgba_hex([r, g, b, a]: [u8; 4]) -> String {
     format!("#{r:02X}{g:02X}{b:02X}{a:02X}")
 }
 
+#[derive(Clone, Copy)]
+struct RgbaPickerState {
+    rgba: [u8; 4],
+    hsva: egui::ecolor::Hsva,
+}
+
+fn rgba_color_picker_button(ui: &mut egui::Ui, rgba: &mut [u8; 4]) -> egui::Response {
+    const CONTENT_WIDTH: f32 = 340.0;
+    const CHANNEL_WIDTH: f32 = 64.0;
+
+    let [r, g, b, a] = *rgba;
+    let color = Color32::from_rgba_unmultiplied(r, g, b, a);
+    let (rect, mut response) =
+        ui.allocate_exact_size(ui.spacing().interact_size, egui::Sense::click());
+    response.widget_info(|| {
+        egui::WidgetInfo::labeled(
+            egui::WidgetType::ColorButton,
+            ui.is_enabled(),
+            "Choose a color and opacity",
+        )
+    });
+
+    let popup_id = response.id.with("popup");
+    let open = ui.memory(|memory| memory.is_popup_open(popup_id));
+    if ui.is_rect_visible(rect) {
+        let visuals = if open {
+            &ui.visuals().widgets.open
+        } else {
+            ui.style().interact(&response)
+        };
+        let rect = rect.expand(visuals.expansion);
+        egui::color_picker::show_color_at(ui.painter(), color, rect.shrink(1.0));
+        ui.painter().rect_stroke(
+            rect,
+            visuals.corner_radius.at_most(2),
+            (1.0, visuals.bg_fill),
+            egui::StrokeKind::Inside,
+        );
+    }
+
+    if response.clicked() {
+        ui.memory_mut(|memory| memory.toggle_popup(popup_id));
+    }
+
+    let state_id = response.id.with("hsva");
+    let mut hsva = ui.ctx().data_mut(|data| {
+        data.get_temp::<RgbaPickerState>(state_id)
+            .filter(|state| state.rgba == *rgba)
+            .map(|state| state.hsva)
+            .unwrap_or_else(|| egui::ecolor::Hsva::from_srgba_unmultiplied(*rgba))
+    });
+
+    if ui.memory(|memory| memory.is_popup_open(popup_id)) {
+        let area_response = egui::Area::new(popup_id)
+            .kind(egui::UiKind::Picker)
+            .order(egui::Order::Foreground)
+            .fixed_pos(response.rect.max)
+            .show(ui.ctx(), |ui| {
+                ui.spacing_mut().slider_width = CONTENT_WIDTH;
+                ui.spacing_mut().interact_size.x = CHANNEL_WIDTH;
+                ui.spacing_mut().button_padding.x = 6.0;
+                ui.spacing_mut().item_spacing.x = 6.0;
+                ui.style_mut().drag_value_text_style = egui::TextStyle::Monospace;
+                egui::Frame::popup(ui.style()).show(ui, |ui| {
+                    if egui::color_picker::color_picker_hsva_2d(
+                        ui,
+                        &mut hsva,
+                        egui::color_picker::Alpha::OnlyBlend,
+                    ) {
+                        response.mark_changed();
+                    }
+                });
+            })
+            .response;
+
+        if !response.clicked()
+            && (ui.input(|input| input.key_pressed(egui::Key::Escape))
+                || area_response.clicked_elsewhere())
+        {
+            ui.memory_mut(|memory| memory.close_popup());
+        }
+    }
+
+    if response.changed() {
+        *rgba = hsva.to_srgba_unmultiplied();
+    }
+    ui.ctx().data_mut(|data| {
+        data.insert_temp(state_id, RgbaPickerState { rgba: *rgba, hsva });
+    });
+    response.on_hover_text("Choose a color and opacity")
+}
+
 fn rgba_hex_input(ui: &mut egui::Ui, value: &mut String) -> egui::Response {
     ui.horizontal(|ui| {
         let text_response = ui.text_edit_singleline(value);
         let mut rgba = parse_rgba_bytes(value).unwrap_or([0, 0, 0, 0]);
-
-        // Egui's color picker auto-sizes its channel DragValues from their current
-        // text. Give popup U8 and float values one stable, compact field width.
-        let original_style = ui.ctx().style();
-        let mut picker_style = (*original_style).clone();
-        picker_style.spacing.interact_size.x = 64.0;
-        picker_style.spacing.button_padding.x = 6.0;
-        picker_style.spacing.item_spacing.x = 6.0;
-        picker_style.drag_value_text_style = egui::TextStyle::Monospace;
-        ui.ctx().set_style(picker_style);
-        let picker_response = ui
-            .color_edit_button_srgba_unmultiplied(&mut rgba)
-            .on_hover_text("Choose a color and opacity");
-        let numeric_color_space = ui.ctx().style().visuals.numeric_color_space;
-        let mut restored_style = (*original_style).clone();
-        restored_style.visuals.numeric_color_space = numeric_color_space;
-        ui.ctx().set_style(restored_style);
-
+        let picker_response = rgba_color_picker_button(ui, &mut rgba);
         if picker_response.changed() {
             *value = format_rgba_hex(rgba);
         }
