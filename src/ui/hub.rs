@@ -276,34 +276,30 @@ impl HubApp {
         ui.heading("Visible formats and templates");
         ui.label(RichText::new("Tokens include %Re/%Gr/%Bl, %Hu, %Sl, %Na and the full PowerToys token set. Changes preview against #336699.").weak());
         let preview = Rgb::new(51, 102, 153);
-        egui::ScrollArea::vertical()
-            .max_height(310.0)
-            .show(ui, |ui| {
-                for name in FORMAT_NAMES {
-                    if let Some(format) = self
-                        .settings
-                        .picker
-                        .formats
-                        .iter_mut()
-                        .find(|format| format.name == name)
-                    {
-                        ui.horizontal(|ui| {
-                            self.dirty |= ui.checkbox(&mut format.enabled, &format.name).changed();
-                            self.dirty |= ui
-                                .add_sized(
-                                    [330.0, 24.0],
-                                    egui::TextEdit::singleline(&mut format.template),
-                                )
-                                .changed();
-                            ui.label(
-                                RichText::new(format_template(preview, &format.template))
-                                    .monospace()
-                                    .weak(),
-                            );
-                        });
-                    }
-                }
-            });
+        for name in FORMAT_NAMES {
+            if let Some(format) = self
+                .settings
+                .picker
+                .formats
+                .iter_mut()
+                .find(|format| format.name == name)
+            {
+                ui.horizontal(|ui| {
+                    self.dirty |= ui.checkbox(&mut format.enabled, &format.name).changed();
+                    self.dirty |= ui
+                        .add_sized(
+                            [330.0, 24.0],
+                            egui::TextEdit::singleline(&mut format.template),
+                        )
+                        .changed();
+                    ui.label(
+                        RichText::new(format_template(preview, &format.template))
+                            .monospace()
+                            .weak(),
+                    );
+                });
+            }
+        }
     }
 
     fn ruler(&mut self, ui: &mut egui::Ui) {
