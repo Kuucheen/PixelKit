@@ -201,6 +201,18 @@ impl EditorApp {
     }
 
     fn history_panel(&mut self, ui: &mut egui::Ui) {
+        let action_frame =
+            egui::Frame::side_top_panel(ui.style()).inner_margin(egui::Margin::symmetric(8, 8));
+        let remove_selected = egui::TopBottomPanel::bottom("editor_history_actions")
+            .resizable(false)
+            .frame(action_frame)
+            .show_inside(ui, |ui| {
+                ui.vertical_centered(|ui| ui.button("Remove selected"))
+                    .inner
+            })
+            .inner
+            .clicked();
+
         ui.horizontal(|ui| {
             ui.heading("History");
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -232,10 +244,7 @@ impl EditorApp {
                 }
             }
         });
-        ui.separator();
-        if ui.button("Remove selected").clicked()
-            && let Some(index) = self.selected_index.take()
-        {
+        if remove_selected && let Some(index) = self.selected_index.take() {
             self.history.colors.remove(index);
             if let Some(color) = self
                 .history
