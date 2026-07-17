@@ -94,12 +94,30 @@ Published x86_64 packages are available from the
 [Fedora Copr repository](https://copr.fedorainfracloud.org/coprs/kuchen/pixelkit/)
 and the
 [openSUSE Build Service project](https://build.opensuse.org/project/show/home:kuchen:PixelKit).
+Arch Linux users can build PixelKit from its
+[AUR package](https://aur.archlinux.org/packages/pixelkit).
 
 ### Fedora 44 and Rawhide
 
 ```bash
 sudo dnf copr enable kuchen/pixelkit
 sudo dnf install pixelkit
+```
+
+### Arch Linux (AUR)
+
+Install with an AUR helper such as `yay`:
+
+```bash
+yay -S pixelkit
+```
+
+Or build and install the package manually:
+
+```bash
+git clone https://aur.archlinux.org/pixelkit.git
+cd pixelkit
+makepkg -si
 ```
 
 ### Debian 13 and Ubuntu 24.04/26.04
