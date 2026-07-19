@@ -50,6 +50,11 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.2.0" date="2026-07-19">
+      <description>
+        <p>PixelKit 0.2.0 upstream release.</p>
+      </description>
+    </release>
     <release version="0.1.2" date="2026-07-15">
       <description>
         <p>PixelKit 0.1.2 upstream release.</p>

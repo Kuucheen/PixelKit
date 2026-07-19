@@ -1,6 +1,6 @@
 # Maintainer: PixelKit contributors <70746714+Kuucheen@users.noreply.github.com>
 pkgname=pixelkit
-pkgver=0.1.2
+pkgver=0.2.0
 pkgrel=1
 pkgdesc='Native Linux color picker, magnifier, and screen ruler'
 arch=('x86_64' 'aarch64')

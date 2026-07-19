@@ -1,5 +1,5 @@
 Name:           pixelkit
-Version:        0.1.2
+Version:        0.2.0
 Release:        1%{?dist}
 Summary:        Native Linux color picker, magnifier, and screen ruler
 License:        MIT
@@ -54,6 +54,9 @@ make install DESTDIR=%{buildroot} PREFIX=%{_prefix} CARGO="cargo --offline"
 %{_mandir}/man1/pixelkit.1*
 
 %changelog
+* Sun Jul 19 2026 PixelKit contributors <70746714+Kuucheen@users.noreply.github.com> - 0.2.0-1
+- Release PixelKit 0.2.0
+
 * Wed Jul 15 2026 PixelKit contributors <70746714+Kuucheen@users.noreply.github.com> - 0.1.2-1
 - Release PixelKit 0.1.2
 

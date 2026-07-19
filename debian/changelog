@@ -1,3 +1,9 @@
+pixelkit (0.2.0-1) unstable; urgency=medium
+
+  * New upstream release 0.2.0.
+
+ -- PixelKit contributors <70746714+Kuucheen@users.noreply.github.com>  Sun, 19 Jul 2026 16:58:30 +0200
+
 pixelkit (0.1.2-1) unstable; urgency=medium
 
   * New upstream release 0.1.2.
