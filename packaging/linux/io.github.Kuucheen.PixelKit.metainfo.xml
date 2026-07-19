@@ -2,18 +2,19 @@
 <component type="desktop-application">
   <id>io.github.Kuucheen.PixelKit</id>
   <name>PixelKit</name>
-  <summary>Pick screen colors and measure pixel distances</summary>
+  <summary>Pick or magnify screen pixels and measure distances</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
   <description>
     <p>
-      PixelKit provides a system-wide color picker, color editor and screen ruler
-      for Linux. It follows the workflows of the Microsoft PowerToys utilities
-      while using Linux-native X11 and freedesktop portal interfaces.
+      PixelKit provides a system-wide color picker, configurable magnifier, color
+      editor and screen ruler for Linux. It follows the workflows of the
+      Microsoft PowerToys utilities while using Linux-native X11 and freedesktop
+      portal interfaces.
     </p>
     <p>The color tools include:</p>
     <ul>
-      <li>Pixel-accurate full-resolution sampling with a magnifier and keyboard movement</li>
+      <li>Pixel-accurate full-resolution sampling with picker and configurable magnifier tools</li>
       <li>Sixteen built-in formats and editable PowerToys-compatible templates</li>
       <li>Color names, clipboard copy, adjustment, variations, export and history</li>
     </ul>

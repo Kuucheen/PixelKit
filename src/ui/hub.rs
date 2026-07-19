@@ -4,7 +4,8 @@ use crate::{
     color::{FORMAT_NAMES, Rgb, format_template},
     config::{
         ActivationAction, ClickAction, EditorView, EditorViewSwitchPosition, History,
-        MAX_PICKER_MAX_ZOOM_LEVEL, RulerMode, Settings, Unit,
+        MAGNIFIER_GRID_SIZES, MAX_MAGNIFIER_ZOOM_LEVEL, MAX_PICKER_MAX_ZOOM_LEVEL, MagnifierStyle,
+        RulerMode, Settings, Unit,
     },
 };
 use eframe::egui::{self, RichText};
@@ -17,6 +18,7 @@ use std::{
 enum Page {
     Home,
     Picker,
+    Magnifier,
     Ruler,
     Shortcuts,
     About,
@@ -87,6 +89,7 @@ impl HubApp {
         for (page, label) in [
             (Page::Home, "Overview"),
             (Page::Picker, "Color Picker"),
+            (Page::Magnifier, "Magnifier"),
             (Page::Ruler, "Screen Ruler"),
             (Page::Shortcuts, "Background shortcuts"),
             (Page::About, "About & compatibility"),
@@ -102,21 +105,65 @@ impl HubApp {
 
     fn home(&mut self, ui: &mut egui::Ui) {
         ui.heading("Overview");
-        ui.label("Pick exact pixels, edit and export colors, or measure UI geometry and same-color spacing.");
+        ui.label("Pick exact pixels, magnify details, edit and export colors, or measure UI geometry and same-color spacing.");
         ui.add_space(12.0);
-        ui.columns(2, |columns| {
+        ui.columns(3, |columns| {
             panel_frame().show(&mut columns[0], |ui| {
-                ui.heading("Color Picker");
-                ui.label("Magnified sampling, keyboard precision, 16 formats, custom templates, color names, and persistent history.");
-                ui.add_space(12.0);
-                if ui.button("Pick a color").clicked() { self.launch("color-picker"); }
-                if ui.button("Open color editor").clicked() { self.launch("color-editor"); }
+                ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                    ui.heading("Color Picker");
+                    ui.label("Magnified sampling, keyboard precision, 16 formats, custom templates, color names, and persistent history.");
+                    ui.add_space(12.0);
+                    if ui
+                        .add_sized(
+                            [ui.available_width(), ui.spacing().interact_size.y],
+                            egui::Button::new("Pick a color"),
+                        )
+                        .clicked()
+                    {
+                        self.launch("color-picker");
+                    }
+                    if ui
+                        .add_sized(
+                            [ui.available_width(), ui.spacing().interact_size.y],
+                            egui::Button::new("Open color editor"),
+                        )
+                        .clicked()
+                    {
+                        self.launch("color-editor");
+                    }
+                });
             });
             panel_frame().show(&mut columns[1], |ui| {
-                ui.heading("Screen Ruler");
-                ui.label("Bounds, cross-spacing, horizontal, and vertical modes with tolerance controls and physical units.");
-                ui.add_space(12.0);
-                if ui.button("Measure the screen").clicked() { self.launch("screen-ruler"); }
+                ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                    ui.heading("Magnifier");
+                    ui.label("A centered grid or tooltip with independent zoom, size, capture, and shortcut settings.");
+                    ui.add_space(12.0);
+                    if ui
+                        .add_sized(
+                            [ui.available_width(), ui.spacing().interact_size.y],
+                            egui::Button::new("Magnify the screen"),
+                        )
+                        .clicked()
+                    {
+                        self.launch("magnifier");
+                    }
+                });
+            });
+            panel_frame().show(&mut columns[2], |ui| {
+                ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                    ui.heading("Screen Ruler");
+                    ui.label("Bounds, cross-spacing, horizontal, and vertical modes with tolerance controls and physical units.");
+                    ui.add_space(12.0);
+                    if ui
+                        .add_sized(
+                            [ui.available_width(), ui.spacing().interact_size.y],
+                            egui::Button::new("Measure the screen"),
+                        )
+                        .clicked()
+                    {
+                        self.launch("screen-ruler");
+                    }
+                });
             });
         });
         ui.add_space(18.0);
@@ -135,6 +182,96 @@ impl HubApp {
                     response.on_hover_text(format!("{} — click to copy", color.name()));
                 }
             });
+        }
+    }
+
+    fn magnifier(&mut self, ui: &mut egui::Ui) {
+        ui.heading("Magnifier");
+        ui.label("Configure the standalone screen magnifier.");
+        ui.separator();
+        egui::Grid::new("magnifier_settings")
+            .num_columns(2)
+            .spacing([18.0, 12.0])
+            .show(ui, |ui| {
+                ui.label("Display style");
+                egui::ComboBox::from_id_salt("magnifier_style")
+                    .selected_text(self.settings.magnifier.style.label())
+                    .show_ui(ui, |ui| {
+                        for style in MagnifierStyle::ALL {
+                            self.dirty |= ui
+                                .selectable_value(
+                                    &mut self.settings.magnifier.style,
+                                    style,
+                                    style.label(),
+                                )
+                                .changed();
+                        }
+                    });
+                ui.end_row();
+
+                ui.label("Starting zoom level");
+                let maximum_zoom_level = self.settings.magnifier.maximum_zoom_level;
+                self.dirty |= ui
+                    .add(
+                        egui::DragValue::new(&mut self.settings.magnifier.initial_zoom_level)
+                            .range(1..=maximum_zoom_level)
+                            .speed(1.0),
+                    )
+                    .changed();
+                ui.end_row();
+
+                ui.label("Maximum zoom level");
+                let maximum_changed = ui
+                    .add(
+                        egui::DragValue::new(&mut self.settings.magnifier.maximum_zoom_level)
+                            .range(1..=MAX_MAGNIFIER_ZOOM_LEVEL)
+                            .speed(1.0),
+                    )
+                    .changed();
+                if maximum_changed {
+                    self.settings.magnifier.initial_zoom_level = self
+                        .settings
+                        .magnifier
+                        .initial_zoom_level
+                        .min(self.settings.magnifier.maximum_zoom_level);
+                    self.dirty = true;
+                }
+                ui.end_row();
+
+                ui.label("Grid size");
+                egui::ComboBox::from_id_salt("magnifier_grid_size")
+                    .selected_text(format!(
+                        "{}×{} pixels",
+                        self.settings.magnifier.grid_size, self.settings.magnifier.grid_size
+                    ))
+                    .show_ui(ui, |ui| {
+                        for size in MAGNIFIER_GRID_SIZES {
+                            self.dirty |= ui
+                                .selectable_value(
+                                    &mut self.settings.magnifier.grid_size,
+                                    size,
+                                    format!("{size}×{size} pixels"),
+                                )
+                                .changed();
+                        }
+                    });
+                ui.end_row();
+            });
+        self.dirty |= ui
+            .checkbox(
+                &mut self.settings.magnifier.change_cursor,
+                "Use a crosshair cursor",
+            )
+            .changed();
+        self.dirty |= ui
+            .checkbox(
+                &mut self.settings.magnifier.interactive_portal,
+                "Let the Wayland portal ask which screen/area to capture",
+            )
+            .changed();
+        ui.add_space(18.0);
+        if ui.button("Launch Magnifier").clicked() {
+            self.launch("magnifier");
         }
     }
 
@@ -438,6 +575,11 @@ impl HubApp {
                     .text_edit_singleline(&mut self.settings.picker.shortcut)
                     .changed();
                 ui.end_row();
+                ui.label("Magnifier");
+                self.dirty |= ui
+                    .text_edit_singleline(&mut self.settings.magnifier.shortcut)
+                    .changed();
+                ui.end_row();
                 ui.label("Screen Ruler");
                 self.dirty |= ui
                     .text_edit_singleline(&mut self.settings.ruler.shortcut)
@@ -534,6 +676,7 @@ impl eframe::App for HubApp {
                 .show(ui, |ui| match self.page {
                     Page::Home => self.home(ui),
                     Page::Picker => self.picker(ui),
+                    Page::Magnifier => self.magnifier(ui),
                     Page::Ruler => self.ruler(ui),
                     Page::Shortcuts => self.shortcuts(ui),
                     Page::About => self.about(ui),

@@ -8,6 +8,8 @@ use std::{
 
 pub const STANDARD_PICKER_MAX_ZOOM_LEVEL: u8 = 5;
 pub const MAX_PICKER_MAX_ZOOM_LEVEL: u8 = 255;
+pub const MAX_MAGNIFIER_ZOOM_LEVEL: u8 = 255;
+pub const MAGNIFIER_GRID_SIZES: [u8; 9] = [5, 7, 9, 11, 13, 15, 17, 19, 21];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
@@ -197,6 +199,54 @@ impl Default for PickerSettings {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum MagnifierStyle {
+    #[default]
+    Centered,
+    #[serde(alias = "picker_tooltip")]
+    Tooltip,
+}
+
+impl MagnifierStyle {
+    pub const ALL: [Self; 2] = [Self::Centered, Self::Tooltip];
+
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Centered => "Centered on pointer",
+            Self::Tooltip => "Tooltip",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MagnifierSettings {
+    pub shortcut: String,
+    pub style: MagnifierStyle,
+    pub initial_zoom_level: u8,
+    pub maximum_zoom_level: u8,
+    pub grid_size: u8,
+    pub change_cursor: bool,
+    /// Let the portal show its target selector. This may add an extra prompt,
+    /// but is useful on multi-monitor Wayland sessions.
+    pub interactive_portal: bool,
+}
+
+impl Default for MagnifierSettings {
+    fn default() -> Self {
+        Self {
+            shortcut: "Super+Shift+Z".into(),
+            style: MagnifierStyle::Centered,
+            initial_zoom_level: 2,
+            maximum_zoom_level: STANDARD_PICKER_MAX_ZOOM_LEVEL,
+            grid_size: 13,
+            change_cursor: false,
+            interactive_portal: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct RulerSettings {
@@ -235,6 +285,7 @@ impl Default for RulerSettings {
 #[serde(default)]
 pub struct Settings {
     pub picker: PickerSettings,
+    pub magnifier: MagnifierSettings,
     pub ruler: RulerSettings,
 }
 
@@ -271,6 +322,17 @@ impl Settings {
             .picker
             .maximum_zoom_level
             .clamp(1, MAX_PICKER_MAX_ZOOM_LEVEL);
+        self.magnifier.maximum_zoom_level = self
+            .magnifier
+            .maximum_zoom_level
+            .clamp(1, MAX_MAGNIFIER_ZOOM_LEVEL);
+        self.magnifier.initial_zoom_level = self
+            .magnifier
+            .initial_zoom_level
+            .clamp(1, self.magnifier.maximum_zoom_level);
+        if !MAGNIFIER_GRID_SIZES.contains(&self.magnifier.grid_size) {
+            self.magnifier.grid_size = MagnifierSettings::default().grid_size;
+        }
         self.ruler.fallback_dpi = self.ruler.fallback_dpi.clamp(20.0, 1000.0);
         for name in FORMAT_NAMES {
             if !self.picker.formats.iter().any(|item| item.name == name) {
@@ -385,6 +447,13 @@ mod tests {
             3
         );
         assert_eq!(settings.ruler.pixel_tolerance, 30);
+        assert_eq!(settings.magnifier.initial_zoom_level, 2);
+        assert_eq!(settings.magnifier.style, MagnifierStyle::Centered);
+        assert_eq!(
+            settings.magnifier.maximum_zoom_level,
+            STANDARD_PICKER_MAX_ZOOM_LEVEL
+        );
+        assert_eq!(settings.magnifier.grid_size, 13);
         assert_eq!(settings.picker.default_editor_view, EditorView::Compact);
         assert!(settings.picker.use_standard_zoom_range);
         assert_eq!(
@@ -414,6 +483,7 @@ mod tests {
             EditorViewSwitchPosition::Centered
         );
         assert!(settings.picker.single_editor_instance);
+        assert_eq!(settings.magnifier.shortcut, "Super+Shift+Z");
         assert_eq!(settings.ruler.cross_color, "#FF4500FF");
     }
 
@@ -455,5 +525,24 @@ mod tests {
             settings.picker.maximum_zoom_level,
             MAX_PICKER_MAX_ZOOM_LEVEL
         );
+    }
+
+    #[test]
+    fn magnifier_settings_are_version_tolerant_and_normalized() {
+        let mut settings: Settings = serde_json::from_str(
+            r#"{"magnifier":{"style":"picker_tooltip","initial_zoom_level":200,"maximum_zoom_level":12,"grid_size":8}}"#,
+        )
+        .unwrap();
+        settings.normalize();
+        assert_eq!(settings.magnifier.initial_zoom_level, 12);
+        assert_eq!(settings.magnifier.style, MagnifierStyle::Tooltip);
+        assert_eq!(settings.magnifier.maximum_zoom_level, 12);
+        assert_eq!(settings.magnifier.grid_size, 13);
+
+        let json = serde_json::to_value(settings).unwrap();
+        assert_eq!(json["magnifier"]["initial_zoom_level"], 12);
+        assert_eq!(json["magnifier"]["style"], "tooltip");
+        assert_eq!(json["magnifier"]["maximum_zoom_level"], 12);
+        assert_eq!(json["magnifier"]["grid_size"], 13);
     }
 }

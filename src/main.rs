@@ -17,6 +17,7 @@ fn main() {
                 | "gui"
                 | "color-picker"
                 | "picker"
+                | "magnifier"
                 | "screen-ruler"
                 | "ruler"
                 | "color-editor"
@@ -43,6 +44,7 @@ fn run() -> Result<()> {
     match command.as_str() {
         "settings" | "gui" => ui::run_hub(),
         "color-picker" | "picker" => ui::run_picker(image_argument(&rest)?.as_deref()),
+        "magnifier" => ui::run_magnifier(image_argument(&rest)?.as_deref()),
         "screen-ruler" | "ruler" => ui::run_ruler(image_argument(&rest)?.as_deref()),
         "color-editor" | "editor" => {
             let arguments = editor_arguments(&rest)?;
@@ -144,11 +146,12 @@ fn print_help() {
     println!(
         r#"PixelKit {VERSION}
 
-Native Linux color picker and screen ruler.
+Native Linux color picker, magnifier, and screen ruler.
 
 USAGE:
     pixelkit [settings]
     pixelkit color-picker [--image FILE.png]
+    pixelkit magnifier [--image FILE.png]
     pixelkit color-editor [--color HEX] [--view compact|full]
     pixelkit screen-ruler [--image FILE.png]
     pixelkit daemon
@@ -156,7 +159,7 @@ USAGE:
     pixelkit formats HEX
     pixelkit paths
 
-The --image option runs either overlay against a PNG and is useful for demos,
+The --image option runs a capture-based tool against a PNG and is useful for demos,
 automated UI tests, and desktops where screen-capture permissions are disabled.
 "#
     );

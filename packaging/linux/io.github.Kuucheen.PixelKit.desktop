@@ -1,16 +1,16 @@
 [Desktop Entry]
 Type=Application
 Name=PixelKit
-GenericName=Color Picker and Screen Ruler
-Comment=Pick screen colors and measure pixel distances
+GenericName=Color Picker, Magnifier, and Screen Ruler
+Comment=Pick or magnify screen pixels and measure distances
 Exec=pixelkit settings
 Icon=io.github.Kuucheen.PixelKit
 Terminal=false
 Categories=Graphics;
-Keywords=color;picker;eyedropper;ruler;measure;pixel;screen;PowerToys;
+Keywords=color;picker;eyedropper;magnifier;zoom;ruler;measure;pixel;screen;PowerToys;
 StartupNotify=true
 StartupWMClass=io.github.Kuucheen.PixelKit
-Actions=ColorPicker;ColorEditor;ScreenRuler;
+Actions=ColorPicker;Magnifier;ColorEditor;ScreenRuler;
 
 [Desktop Action ColorPicker]
 Name=Pick a Color
@@ -19,6 +19,10 @@ Exec=pixelkit color-picker
 [Desktop Action ColorEditor]
 Name=Open Color Editor
 Exec=pixelkit color-editor
+
+[Desktop Action Magnifier]
+Name=Magnify the Screen
+Exec=pixelkit magnifier
 
 [Desktop Action ScreenRuler]
 Name=Measure the Screen

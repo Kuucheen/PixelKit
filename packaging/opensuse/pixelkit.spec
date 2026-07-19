@@ -1,7 +1,7 @@
 Name:           pixelkit
 Version:        0.1.2
 Release:        0
-Summary:        Native Linux color picker and screen ruler
+Summary:        Native Linux color picker, magnifier, and screen ruler
 License:        MIT
 Group:          Productivity/Graphics/Other
 URL:            https://github.com/Kuucheen/PixelKit
@@ -23,7 +23,8 @@ Requires:       xdg-desktop-portal
 Recommends:     xdg-desktop-portal-gtk
 
 %description
-PixelKit provides a system-wide color picker, color editor, and screen ruler.
+PixelKit provides a system-wide color picker, configurable magnifier, color editor,
+and screen ruler.
 
 %prep
 %autosetup

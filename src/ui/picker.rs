@@ -1,6 +1,10 @@
 use super::{
-    TiledCaptureTexture, color32, configure_style, copy_text, overlay_options, spawn_editor,
-    wheel_steps,
+    TiledCaptureTexture, adjusted_zoom_level, configure_style, copy_text,
+    loupe::{
+        Loupe, LoupeDetails, LoupePlacement, capture_image_rect, draw_loupe as draw_shared_loupe,
+        point_position, screen_to_pixel,
+    },
+    overlay_options, spawn_editor, wheel_steps,
 };
 use crate::{
     APP_NAME,
@@ -9,24 +13,8 @@ use crate::{
     config::{ActivationAction, ClickAction, History, STANDARD_PICKER_MAX_ZOOM_LEVEL, Settings},
     measurement::Point,
 };
-use eframe::egui::{self, Color32, FontId, Pos2, Rect, Stroke, StrokeKind, Vec2};
+use eframe::egui::{self, Color32, FontId, Pos2, Rect, Stroke};
 use std::{path::Path, sync::Arc};
-
-fn adjusted_zoom_level(current: i32, steps: i32, maximum: u8) -> i32 {
-    current.saturating_add(steps).clamp(0, i32::from(maximum))
-}
-
-fn zoom_cell_size(level: i32) -> f32 {
-    let level = level.max(0) as f32;
-    let standard_max = f32::from(STANDARD_PICKER_MAX_ZOOM_LEVEL);
-    if level <= standard_max {
-        3.0 + level * 1.7
-    } else {
-        // Preserve the existing standard levels, then grow more gradually so
-        // high custom levels remain usable without pushing the loupe off-screen.
-        3.0 + standard_max * 1.7 + (level - standard_max).sqrt() * 1.7
-    }
-}
 
 pub fn run_picker(image_path: Option<&Path>) -> anyhow::Result<()> {
     let settings = Settings::load_or_default();
@@ -41,9 +29,10 @@ pub fn run_picker(image_path: Option<&Path>) -> anyhow::Result<()> {
             settings.ruler.fallback_dpi,
         )?
     };
-    let options = overlay_options(&format!("Color Picker — {APP_NAME}"));
+    let title = format!("Color Picker — {APP_NAME}");
+    let options = overlay_options(&title);
     super::map_eframe(eframe::run_native(
-        &format!("Color Picker — {APP_NAME}"),
+        &title,
         options,
         Box::new(move |cc| {
             configure_style(&cc.egui_ctx);
@@ -82,30 +71,6 @@ impl PickerApp {
         }
     }
 
-    fn image_rect(&self, available: Rect) -> Rect {
-        let scale = (available.width() / self.frame.width as f32)
-            .min(available.height() / self.frame.height as f32);
-        let size = Vec2::new(
-            self.frame.width as f32 * scale,
-            self.frame.height as f32 * scale,
-        );
-        Rect::from_center_size(available.center(), size)
-    }
-
-    fn screen_to_pixel(&self, position: Pos2, rect: Rect) -> Option<Point> {
-        if !rect.contains(position) {
-            return None;
-        }
-        let x =
-            ((position.x - rect.left()) / rect.width() * self.frame.width as f32).floor() as u32;
-        let y =
-            ((position.y - rect.top()) / rect.height() * self.frame.height as f32).floor() as u32;
-        Some(Point {
-            x: x.min(self.frame.width - 1),
-            y: y.min(self.frame.height - 1),
-        })
-    }
-
     fn selected_color(&self) -> Rgb {
         self.frame
             .pixel_checked(self.point.x, self.point.y)
@@ -119,7 +84,7 @@ impl PickerApp {
                 .last_pointer
                 .is_none_or(|last| last.distance(position) > 0.25);
             if moved {
-                if let Some(point) = self.screen_to_pixel(position, image_rect) {
+                if let Some(point) = screen_to_pixel(&self.frame, position, image_rect) {
                     self.point = point;
                 }
                 self.last_pointer = Some(position);
@@ -210,139 +175,26 @@ impl PickerApp {
     }
 
     fn draw_loupe(&self, ctx: &egui::Context, image_rect: Rect) {
-        if self.zoom_level == 0 {
-            return;
-        }
-        let painter = ctx.layer_painter(egui::LayerId::new(
-            egui::Order::Foreground,
-            "picker-loupe".into(),
-        ));
-        let cells = 13_i32;
-        let cell = zoom_cell_size(self.zoom_level);
-        let grid_size = cells as f32 * cell;
         let color = self.selected_color();
         let value = format_template(color, self.settings.selected_format());
-        let value_font = FontId::monospace(15.0);
-        let value_width = painter
-            .layout_no_wrap(value.clone(), value_font.clone(), Color32::WHITE)
-            .size()
-            .x;
         let name = self.settings.picker.show_color_name.then(|| color.name());
-        let name_font = FontId::proportional(13.0);
-        let name_width = name.as_ref().map_or(0.0, |name| {
-            painter
-                .layout_no_wrap(name.to_string(), name_font.clone(), Color32::LIGHT_GRAY)
-                .size()
-                .x
-        });
-        let available_width = (image_rect.width() - 30.0).max(grid_size);
-        let content_width = grid_size
-            .max(value_width + 12.0)
-            .max(name_width + 12.0)
-            .min(available_width);
-        let footer_height =
-            10.0 + 18.0 + 7.0 + 18.0 + if name.is_some() { 20.0 } else { 0.0 } + 4.0;
-        let total_height = grid_size + footer_height;
-        let pointer = Pos2::new(
-            image_rect.left()
-                + (self.point.x as f32 + 0.5) / self.frame.width as f32 * image_rect.width(),
-            image_rect.top()
-                + (self.point.y as f32 + 0.5) / self.frame.height as f32 * image_rect.height(),
+        draw_shared_loupe(
+            ctx,
+            Loupe {
+                frame: &self.frame,
+                point: self.point,
+                anchor: point_position(&self.frame, self.point, image_rect),
+                image_rect,
+                zoom_level: self.zoom_level,
+                cells: 13,
+                placement: LoupePlacement::Tooltip,
+                details: Some(LoupeDetails {
+                    value: &value,
+                    name,
+                }),
+                layer_id: "picker-loupe",
+            },
         );
-        let mut origin = pointer + Vec2::new(24.0, 24.0);
-        if origin.x + content_width + 12.0 > image_rect.right() {
-            origin.x = pointer.x - content_width - 24.0;
-        }
-        if origin.y + total_height + 12.0 > image_rect.bottom() {
-            origin.y = pointer.y - total_height - 24.0;
-        }
-        let minimum = image_rect.min + Vec2::splat(8.0);
-        let maximum = Pos2::new(
-            (image_rect.right() - content_width - 8.0).max(minimum.x),
-            (image_rect.bottom() - total_height - 8.0).max(minimum.y),
-        );
-        origin.x = origin.x.clamp(minimum.x, maximum.x);
-        origin.y = origin.y.clamp(minimum.y, maximum.y);
-        let box_rect = Rect::from_min_size(
-            origin - Vec2::splat(7.0),
-            Vec2::new(content_width + 14.0, total_height + 14.0),
-        );
-        painter.rect_filled(box_rect, 9.0, Color32::from_black_alpha(225));
-        painter.rect_stroke(
-            box_rect,
-            9.0,
-            Stroke::new(1.0, Color32::from_white_alpha(80)),
-            StrokeKind::Outside,
-        );
-        let grid_origin = origin + Vec2::new((content_width - grid_size) * 0.5, 0.0);
-        let radius = cells / 2;
-        for gy in 0..cells {
-            for gx in 0..cells {
-                let px = (self.point.x as i64 + i64::from(gx - radius))
-                    .clamp(0, i64::from(self.frame.width - 1)) as u32;
-                let py = (self.point.y as i64 + i64::from(gy - radius))
-                    .clamp(0, i64::from(self.frame.height - 1)) as u32;
-                let rect = Rect::from_min_size(
-                    grid_origin + Vec2::new(gx as f32 * cell, gy as f32 * cell),
-                    Vec2::splat(cell + 0.25),
-                );
-                painter.rect_filled(
-                    rect,
-                    0.0,
-                    color32(self.frame.pixel_checked(px, py).unwrap_or_default()),
-                );
-            }
-        }
-        let center = Rect::from_min_size(
-            grid_origin + Vec2::new(radius as f32 * cell, radius as f32 * cell),
-            Vec2::splat(cell),
-        );
-        painter.rect_stroke(
-            center.expand(1.0),
-            0.0,
-            Stroke::new(2.0, Color32::WHITE),
-            StrokeKind::Outside,
-        );
-        painter.rect_stroke(
-            center.expand(3.0),
-            0.0,
-            Stroke::new(1.0, Color32::BLACK),
-            StrokeKind::Outside,
-        );
-        let swatch = Rect::from_min_size(
-            Pos2::new(grid_origin.x, origin.y + grid_size + 10.0),
-            Vec2::new(grid_size, 18.0),
-        );
-        painter.rect_filled(swatch, 5.0, color32(color));
-        painter.rect_stroke(
-            swatch,
-            5.0,
-            Stroke::new(1.0, Color32::from_black_alpha(130)),
-            StrokeKind::Inside,
-        );
-        painter.rect_stroke(
-            swatch,
-            5.0,
-            Stroke::new(1.0, Color32::from_white_alpha(105)),
-            StrokeKind::Outside,
-        );
-        let value_top = swatch.bottom() + 7.0;
-        painter.text(
-            Pos2::new(origin.x + content_width * 0.5, value_top),
-            egui::Align2::CENTER_TOP,
-            value,
-            value_font,
-            Color32::WHITE,
-        );
-        if let Some(name) = name {
-            painter.text(
-                Pos2::new(origin.x + content_width * 0.5, value_top + 20.0),
-                egui::Align2::CENTER_TOP,
-                name,
-                name_font,
-                Color32::LIGHT_GRAY,
-            );
-        }
     }
 }
 
@@ -353,13 +205,10 @@ impl eframe::App for PickerApp {
         }
         egui::CentralPanel::default().frame(egui::Frame::new().fill(Color32::BLACK)).show(ctx, |ui| {
             let available = ui.max_rect();
-            let image_rect = self.image_rect(available);
+            let image_rect = capture_image_rect(&self.frame, available);
             self.texture.paint(ui.painter(), image_rect);
             self.handle_input(ctx, image_rect);
-            let point_screen = Pos2::new(
-                image_rect.left() + (self.point.x as f32 + 0.5) / self.frame.width as f32 * image_rect.width(),
-                image_rect.top() + (self.point.y as f32 + 0.5) / self.frame.height as f32 * image_rect.height(),
-            );
+            let point_screen = point_position(&self.frame, self.point, image_rect);
             ui.painter().circle_stroke(point_screen, 6.0, Stroke::new(1.5, Color32::WHITE));
             ui.painter().circle_stroke(point_screen, 8.0, Stroke::new(1.0, Color32::BLACK));
             let source = match self.frame.backend { CaptureBackend::X11 => "direct X11 capture", CaptureBackend::Portal => "Wayland portal snapshot", CaptureBackend::File => "image preview" };
@@ -374,6 +223,7 @@ impl eframe::App for PickerApp {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ui::zoom_cell_size;
 
     #[test]
     fn zoom_level_respects_standard_and_custom_limits() {

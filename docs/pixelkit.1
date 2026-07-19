@@ -1,11 +1,14 @@
 .TH PIXELKIT 1 "July 2026" "PixelKit 0.1.2" "User Commands"
 .SH NAME
-pixelkit \- Linux color picker and screen ruler
+pixelkit \- Linux color picker, magnifier, and screen ruler
 .SH SYNOPSIS
 .B pixelkit
 [settings]
 .br
 .B pixelkit color-picker
+[--image FILE.png]
+.br
+.B pixelkit magnifier
 [--image FILE.png]
 .br
 .B pixelkit color-editor
@@ -18,7 +21,8 @@ pixelkit \- Linux color picker and screen ruler
 .br
 .B pixelkit configure-shortcuts
 .SH DESCRIPTION
-PixelKit is a native system-wide color picker, color editor, and screen ruler.
+PixelKit is a native system-wide color picker, configurable magnifier, color
+editor, and screen ruler.
 It uses direct X11 capture on X11 sessions and freedesktop screenshot and global
 shortcut portals on Wayland.
 .SH COMMANDS
@@ -28,6 +32,12 @@ Open the PixelKit settings and launcher window.
 .TP
 .B color-picker
 Capture the screen and open the magnified pixel picker.
+.TP
+.B magnifier
+Capture the screen and open a magnifier centered on the pointer. Use the mouse
+wheel to change zoom and Escape or Backspace to close. Centered-grid and tooltip
+styles, starting zoom, maximum zoom, grid size, cursor behavior,
+capture behavior, and shortcut are configurable in the settings window.
 .TP
 .B color-editor
 Open color history, adjustment, format, and export tools.

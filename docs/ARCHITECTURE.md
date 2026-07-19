@@ -13,7 +13,7 @@ small idle daemon when global shortcuts are enabled.
 | `measurement` | Inclusive rectangles, physical units, two edge-distance algorithms |
 | `config` | XDG paths, atomic JSON saves, history de-duplication and schema defaults |
 | `daemon` | X11 hotkeys or a portal GlobalShortcuts session; launches tools on demand |
-| `ui` | Settings, magnified picker, color editor, and transparent ruler overlay |
+| `ui` | Settings plus independent picker, magnifier, color editor, and ruler processes |
 
 ## Capture flow
 
@@ -25,13 +25,13 @@ activation
     └── Wayland ── Screenshot portal ─────┤
                                           ▼
                                   normalized RGBA frame
-                                      │         │
-                                      ▼         ▼
-                                Color Picker  Screen Ruler
-                                      │         │
-                                      └────┬────┘
-                                           ▼
-                                clipboard + local history
+                                      │    │    │
+                         ┌────────────┘    │    └────────────┐
+                         ▼                 ▼                 ▼
+                    Color Picker      Magnifier        Screen Ruler
+                         │                                   │
+                         ▼                                   ▼
+              clipboard + local history                  clipboard
 ```
 
 The screen is captured before the overlay appears, so a normal pick never

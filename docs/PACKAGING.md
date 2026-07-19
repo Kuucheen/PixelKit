@@ -69,7 +69,7 @@ and checksum manifest to the GitHub release.
 - `desktop-file-validate` passes.
 - `flatpak-builder --force-clean` succeeds with networking disabled for build.
 - `rpmlint`, `lintian`, `namcap`, and `snapcraft lint` pass for their artifacts.
-- X11 and Wayland picker/ruler smoke tests pass, including portal denial.
+- X11 and Wayland picker/magnifier/ruler smoke tests pass, including portal denial.
 - Test two monitors, mixed scale factors, RGB565/24/32-bit X visuals where
   available, clipboard persistence, shortcut conflicts, and corrupt JSON.
 - Confirm the release contact and GitHub noreply address are appropriate for the publisher.

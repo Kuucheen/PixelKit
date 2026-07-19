@@ -1,7 +1,7 @@
 name: pixelkit
 base: core24
 version: '0.1.2'
-summary: Native Linux color picker and screen ruler
+summary: Native Linux color picker, magnifier, and screen ruler
 description: |
   PixelKit provides a magnified system-wide color picker, color editor, and
   screen ruler. X11 is captured directly; Wayland uses freedesktop portals.

@@ -1,5 +1,5 @@
 {
-  description = "PixelKit Linux color picker and screen ruler";
+  description = "PixelKit Linux color picker, magnifier, and screen ruler";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -35,7 +35,7 @@
             '';
 
             meta = {
-              description = "Native Linux color picker and screen ruler";
+              description = "Native Linux color picker, magnifier, and screen ruler";
               homepage = "https://github.com/Kuucheen/PixelKit";
               license = pkgs.lib.licenses.mit;
               mainProgram = "pixelkit";

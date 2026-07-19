@@ -1,9 +1,13 @@
 mod editor;
 mod hub;
+mod loupe;
+mod magnifier;
 mod picker;
 mod ruler;
 
-use crate::{APP_ID, APP_NAME, capture::CaptureFrame, color::Rgb};
+use crate::{
+    APP_ID, APP_NAME, capture::CaptureFrame, color::Rgb, config::STANDARD_PICKER_MAX_ZOOM_LEVEL,
+};
 use anyhow::{Result, anyhow};
 use eframe::egui::{self, Color32, CornerRadius, Pos2, Rect, Stroke, Vec2, ViewportBuilder};
 use std::{
@@ -13,8 +17,25 @@ use std::{
 
 pub use editor::run_editor;
 pub use hub::run_hub;
+pub use magnifier::run_magnifier;
 pub use picker::run_picker;
 pub use ruler::run_ruler;
+
+fn adjusted_zoom_level(current: i32, steps: i32, maximum: u8) -> i32 {
+    current.saturating_add(steps).clamp(0, i32::from(maximum))
+}
+
+fn zoom_cell_size(level: i32) -> f32 {
+    let level = level.max(0) as f32;
+    let standard_max = f32::from(STANDARD_PICKER_MAX_ZOOM_LEVEL);
+    if level <= standard_max {
+        3.0 + level * 1.7
+    } else {
+        // Preserve the existing standard levels, then grow more gradually so
+        // high custom levels remain usable without pushing the loupe off-screen.
+        3.0 + standard_max * 1.7 + (level - standard_max).sqrt() * 1.7
+    }
+}
 
 pub fn show_error(message: String) -> Result<()> {
     map_eframe(eframe::run_native(

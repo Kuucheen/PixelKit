@@ -9,6 +9,7 @@ use std::{
 };
 
 const PICKER_ID: &str = "color-picker";
+const MAGNIFIER_ID: &str = "magnifier";
 const RULER_ID: &str = "screen-ruler";
 
 type PortalShortcut = (String, String, String);
@@ -51,24 +52,31 @@ fn run_x11(settings: Settings) -> Result<()> {
         .shortcut
         .parse()
         .context("invalid Screen Ruler shortcut")?;
-    if picker.id() == ruler.id() {
+    let magnifier: HotKey = settings
+        .magnifier
+        .shortcut
+        .parse()
+        .context("invalid Magnifier shortcut")?;
+    if picker.id() == ruler.id() || picker.id() == magnifier.id() || magnifier.id() == ruler.id() {
         return Err(anyhow!(
-            "Color Picker and Screen Ruler shortcuts must differ"
+            "Color Picker, Magnifier, and Screen Ruler shortcuts must all differ"
         ));
     }
     let manager =
         GlobalHotKeyManager::new().context("failed to initialize X11 global shortcuts")?;
     manager
-        .register_all(&[picker, ruler])
+        .register_all(&[picker, magnifier, ruler])
         .context("failed to register an X11 shortcut; another application may already own it")?;
     eprintln!(
-        "PixelKit daemon: X11 shortcuts registered ({} and {})",
-        settings.picker.shortcut, settings.ruler.shortcut
+        "PixelKit daemon: X11 shortcuts registered ({}, {}, and {})",
+        settings.picker.shortcut, settings.magnifier.shortcut, settings.ruler.shortcut
     );
     while let Ok(event) = GlobalHotKeyEvent::receiver().recv() {
         if event.state == HotKeyState::Pressed {
             if event.id == picker.id() {
                 spawn_action(PICKER_ID);
+            } else if event.id == magnifier.id() {
+                spawn_action(MAGNIFIER_ID);
             } else if event.id == ruler.id() {
                 spawn_action(RULER_ID);
             }
@@ -90,6 +98,7 @@ async fn run_portal(settings: Settings) -> Result<()> {
     while let Some(event) = activated.next().await {
         match event.shortcut_id() {
             PICKER_ID => spawn_action(PICKER_ID),
+            MAGNIFIER_ID => spawn_action(MAGNIFIER_ID),
             RULER_ID => spawn_action(RULER_ID),
             _ => {}
         }
@@ -144,10 +153,13 @@ async fn bind_portal_shortcuts(
         .create_session(CreateSessionOptions::default())
         .await?;
     let picker_trigger = portal_trigger(&settings.picker.shortcut)?;
+    let magnifier_trigger = portal_trigger(&settings.magnifier.shortcut)?;
     let ruler_trigger = portal_trigger(&settings.ruler.shortcut)?;
     let shortcuts = [
         NewShortcut::new(PICKER_ID, "Open PixelKit Color Picker")
             .preferred_trigger(Some(picker_trigger.as_str())),
+        NewShortcut::new(MAGNIFIER_ID, "Open PixelKit Magnifier")
+            .preferred_trigger(Some(magnifier_trigger.as_str())),
         NewShortcut::new(RULER_ID, "Open PixelKit Screen Ruler")
             .preferred_trigger(Some(ruler_trigger.as_str())),
     ];
@@ -157,7 +169,7 @@ async fn bind_portal_shortcuts(
         .response()?;
     if response.shortcuts().is_empty() {
         return Err(anyhow!(
-            "the desktop did not grant either PixelKit global shortcut"
+            "the desktop did not grant any PixelKit global shortcut"
         ));
     }
     let shortcuts = response

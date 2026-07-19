@@ -10,8 +10,8 @@ applies only inside that tree.
 PixelKit is a lightweight, native Linux implementation of the PowerToys Color
 Picker and Screen Ruler workflows. Preserve these properties:
 
-- One Rust binary with short-lived picker/ruler/editor processes and a small
-  event-blocked shortcut daemon.
+- One Rust binary with short-lived picker/magnifier/ruler/editor processes and
+  a small event-blocked shortcut daemon.
 - No privileged helper, `/dev/input`, uinput, key logger, telemetry, or runtime
   network service.
 - Direct X11 integration where the protocol permits it; compositor-controlled
@@ -36,7 +36,9 @@ renderer. The upstream repository is `git@github.com:Kuucheen/PixelKit.git`.
 - `src/daemon.rs`: X11 hotkeys and Wayland GlobalShortcuts portal sessions.
 - `src/ui/mod.rs`: shared egui style, process launching, wheel normalization,
   and lossless tiled capture textures.
-- `src/ui/picker.rs`: full-screen picker and magnifier/loupe.
+- `src/ui/loupe.rs`: shared picker/magnifier grid, tooltip, and coordinate logic.
+- `src/ui/picker.rs`: full-screen picker and offset color loupe.
+- `src/ui/magnifier.rs`: standalone configurable magnifier overlay.
 - `src/ui/ruler.rs`: full-screen ruler, measurements, and async recapture.
 - `src/ui/editor.rs`: saved-color editor/history/export UI.
 - `src/ui/hub.rs`: settings and launcher window.
@@ -88,6 +90,9 @@ renderer. The upstream repository is `git@github.com:Kuucheen/PixelKit.git`.
 - The picker loupe has no fixed minimum content width. Its box width is derived
   from the 13x13 grid, formatted value, and optional color name. The color
   swatch width is exactly the magnified grid width.
+- The picker and standalone magnifier must use the shared loupe renderer. The
+  magnifier can keep its grid centered on the live pointer or use tooltip
+  placement. Magnifier modes intentionally omit picker color details.
 - Picker Escape/Backspace closes without picking. Escape also closes the color
   editor opened after a pick.
 - Ruler mode icons are painter-drawn vectors. Do not replace them with Unicode
@@ -139,6 +144,7 @@ needed:
 
 ```bash
 cargo run -- color-picker --image /path/to/test.png
+cargo run -- magnifier --image /path/to/test.png
 cargo run -- screen-ruler --image /path/to/test.png
 ```
 

@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=PixelKit shortcuts
-Comment=Enable PixelKit Color Picker and Screen Ruler shortcuts
+Comment=Enable PixelKit Color Picker, Magnifier, and Screen Ruler shortcuts
 Exec=pixelkit daemon
 Icon=io.github.Kuucheen.PixelKit
 Terminal=false

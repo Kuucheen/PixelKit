@@ -16,10 +16,13 @@ https://github.com/user-attachments/assets/fd06e8b0-96c1-4ea9-b514-56c151987239
 
 ## Features
 
-### Color Picker and editor
+### Color Picker, Magnifier, and editor
 
 - Pick any captured pixel with an always-on-top full-screen overlay.
 - 13×13 magnifier with five wheel-controlled zoom levels.
+- Standalone magnifier with centered-grid and tooltip styles plus
+  configurable starting/maximum zoom, grid size, cursor, Wayland capture
+  behavior, and global shortcut.
 - Arrow-key movement at one pixel; Shift+arrow movement at ten pixels.
 - Primary, middle, and secondary click actions: pick then edit, pick and close,
   or close without copying.
@@ -85,6 +88,7 @@ desktop's keyboard settings:
 
 ```text
 pixelkit color-picker
+pixelkit magnifier
 pixelkit screen-ruler
 ```
 
@@ -165,6 +169,7 @@ Launch `pixelkit`, or use a direct command:
 
 ```bash
 pixelkit color-picker
+pixelkit magnifier
 pixelkit color-editor
 pixelkit screen-ruler
 ```
@@ -248,12 +253,13 @@ cargo check --all-targets --locked
 cargo test --all-targets --locked
 cargo run -- formats '#ff0000'
 cargo run -- color-picker --image test-screen.png
+cargo run -- magnifier --image test-screen.png
 cargo run -- screen-ruler --image test-screen.png
 ```
 
-The `--image` mode exercises the exact picker/ruler UI and algorithms without
-requesting desktop capture. Multi-monitor and mixed-scale release testing is
-still recommended on both X11 and Wayland.
+The `--image` mode exercises the exact picker/magnifier/ruler UI and algorithms
+without requesting desktop capture. Multi-monitor and mixed-scale release
+testing is still recommended on both X11 and Wayland.
 
 ## License and attribution
 
