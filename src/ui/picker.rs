@@ -6,11 +6,27 @@ use crate::{
     APP_NAME,
     capture::{CaptureBackend, CaptureFrame, capture_screen},
     color::{Rgb, format_template},
-    config::{ActivationAction, ClickAction, History, Settings},
+    config::{ActivationAction, ClickAction, History, STANDARD_PICKER_MAX_ZOOM_LEVEL, Settings},
     measurement::Point,
 };
 use eframe::egui::{self, Color32, FontId, Pos2, Rect, Stroke, StrokeKind, Vec2};
 use std::{path::Path, sync::Arc};
+
+fn adjusted_zoom_level(current: i32, steps: i32, maximum: u8) -> i32 {
+    current.saturating_add(steps).clamp(0, i32::from(maximum))
+}
+
+fn zoom_cell_size(level: i32) -> f32 {
+    let level = level.max(0) as f32;
+    let standard_max = f32::from(STANDARD_PICKER_MAX_ZOOM_LEVEL);
+    if level <= standard_max {
+        3.0 + level * 1.7
+    } else {
+        // Preserve the existing standard levels, then grow more gradually so
+        // high custom levels remain usable without pushing the loupe off-screen.
+        3.0 + standard_max * 1.7 + (level - standard_max).sqrt() * 1.7
+    }
+}
 
 pub fn run_picker(image_path: Option<&Path>) -> anyhow::Result<()> {
     let settings = Settings::load_or_default();
@@ -153,7 +169,12 @@ impl PickerApp {
         }
         let zoom_steps = wheel_steps(ctx, &mut self.wheel_remainder);
         if zoom_steps != 0 {
-            self.zoom_level = (self.zoom_level + zoom_steps).clamp(0, 5);
+            let maximum = if self.settings.picker.use_standard_zoom_range {
+                STANDARD_PICKER_MAX_ZOOM_LEVEL
+            } else {
+                self.settings.picker.maximum_zoom_level
+            };
+            self.zoom_level = adjusted_zoom_level(self.zoom_level, zoom_steps, maximum);
         }
         if escape || backspace {
             self.finish(ctx, ClickAction::Close);
@@ -197,7 +218,7 @@ impl PickerApp {
             "picker-loupe".into(),
         ));
         let cells = 13_i32;
-        let cell = 3.0 + self.zoom_level as f32 * 1.7;
+        let cell = zoom_cell_size(self.zoom_level);
         let grid_size = cells as f32 * cell;
         let color = self.selected_color();
         let value = format_template(color, self.settings.selected_format());
@@ -347,5 +368,34 @@ impl eframe::App for PickerApp {
             ui.painter().text(Pos2::new(available.center().x, available.bottom() - 22.0), egui::Align2::CENTER_CENTER, help, FontId::proportional(13.0), Color32::WHITE);
             self.draw_loupe(ctx, image_rect);
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn zoom_level_respects_standard_and_custom_limits() {
+        assert_eq!(adjusted_zoom_level(5, 1, 5), 5);
+        assert_eq!(adjusted_zoom_level(5, 1, 12), 6);
+        assert_eq!(adjusted_zoom_level(11, 10, 12), 12);
+        assert_eq!(adjusted_zoom_level(0, -1, 12), 0);
+        assert_eq!(adjusted_zoom_level(254, 10, 255), 255);
+    }
+
+    #[test]
+    fn zoom_level_adjustment_cannot_overflow() {
+        assert_eq!(adjusted_zoom_level(i32::MAX, 1, 16), 16);
+        assert_eq!(adjusted_zoom_level(i32::MIN, -1, 16), 0);
+    }
+
+    #[test]
+    fn custom_zoom_sizes_preserve_standard_levels_and_remain_usable() {
+        assert_eq!(zoom_cell_size(0), 3.0);
+        assert_eq!(zoom_cell_size(5), 11.5);
+        assert!(zoom_cell_size(6) > zoom_cell_size(5));
+        assert!(zoom_cell_size(255) > zoom_cell_size(64));
+        assert!(zoom_cell_size(255) < 40.0);
     }
 }

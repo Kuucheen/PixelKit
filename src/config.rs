@@ -6,6 +6,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
+pub const STANDARD_PICKER_MAX_ZOOM_LEVEL: u8 = 5;
+pub const MAX_PICKER_MAX_ZOOM_LEVEL: u8 = 255;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ActivationAction {
@@ -152,6 +155,8 @@ pub struct PickerSettings {
     pub secondary_click: ClickAction,
     pub change_cursor: bool,
     pub show_color_name: bool,
+    pub use_standard_zoom_range: bool,
+    pub maximum_zoom_level: u8,
     pub history_limit: usize,
     pub default_editor_view: EditorView,
     pub editor_view_switch_position: EditorViewSwitchPosition,
@@ -173,6 +178,8 @@ impl Default for PickerSettings {
             secondary_click: ClickAction::Close,
             change_cursor: false,
             show_color_name: false,
+            use_standard_zoom_range: true,
+            maximum_zoom_level: STANDARD_PICKER_MAX_ZOOM_LEVEL,
             history_limit: 20,
             default_editor_view: EditorView::Compact,
             editor_view_switch_position: EditorViewSwitchPosition::Centered,
@@ -260,6 +267,10 @@ impl Settings {
 
     pub fn normalize(&mut self) {
         self.picker.history_limit = self.picker.history_limit.clamp(1, 10_000);
+        self.picker.maximum_zoom_level = self
+            .picker
+            .maximum_zoom_level
+            .clamp(1, MAX_PICKER_MAX_ZOOM_LEVEL);
         self.ruler.fallback_dpi = self.ruler.fallback_dpi.clamp(20.0, 1000.0);
         for name in FORMAT_NAMES {
             if !self.picker.formats.iter().any(|item| item.name == name) {
@@ -375,6 +386,11 @@ mod tests {
         );
         assert_eq!(settings.ruler.pixel_tolerance, 30);
         assert_eq!(settings.picker.default_editor_view, EditorView::Compact);
+        assert!(settings.picker.use_standard_zoom_range);
+        assert_eq!(
+            settings.picker.maximum_zoom_level,
+            STANDARD_PICKER_MAX_ZOOM_LEVEL
+        );
         assert_eq!(
             settings.picker.editor_view_switch_position,
             EditorViewSwitchPosition::Centered
@@ -388,6 +404,11 @@ mod tests {
             serde_json::from_str(r#"{"picker":{"copied_format":"RGB"}}"#).unwrap();
         assert_eq!(settings.picker.copied_format, "RGB");
         assert_eq!(settings.picker.default_editor_view, EditorView::Compact);
+        assert!(settings.picker.use_standard_zoom_range);
+        assert_eq!(
+            settings.picker.maximum_zoom_level,
+            STANDARD_PICKER_MAX_ZOOM_LEVEL
+        );
         assert_eq!(
             settings.picker.editor_view_switch_position,
             EditorViewSwitchPosition::Centered
@@ -420,5 +441,19 @@ mod tests {
         let settings: Settings =
             serde_json::from_str(r#"{"picker":{"default_editor_view":"compact"}}"#).unwrap();
         assert_eq!(settings.picker.default_editor_view, EditorView::Compact);
+    }
+
+    #[test]
+    fn custom_picker_zoom_limit_is_normalized() {
+        let mut settings: Settings = serde_json::from_str(
+            r#"{"picker":{"use_standard_zoom_range":false,"maximum_zoom_level":255}}"#,
+        )
+        .unwrap();
+        settings.normalize();
+        assert!(!settings.picker.use_standard_zoom_range);
+        assert_eq!(
+            settings.picker.maximum_zoom_level,
+            MAX_PICKER_MAX_ZOOM_LEVEL
+        );
     }
 }

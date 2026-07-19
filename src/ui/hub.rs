@@ -3,8 +3,8 @@ use crate::{
     APP_NAME, VERSION,
     color::{FORMAT_NAMES, Rgb, format_template},
     config::{
-        ActivationAction, ClickAction, EditorView, EditorViewSwitchPosition, History, RulerMode,
-        Settings, Unit,
+        ActivationAction, ClickAction, EditorView, EditorViewSwitchPosition, History,
+        MAX_PICKER_MAX_ZOOM_LEVEL, RulerMode, Settings, Unit,
     },
 };
 use eframe::egui::{self, RichText};
@@ -244,6 +244,26 @@ impl HubApp {
                         egui::DragValue::new(&mut self.settings.picker.history_limit)
                             .range(1..=10_000),
                     )
+                    .changed();
+                ui.end_row();
+                ui.label("Zoom range");
+                self.dirty |= ui
+                    .checkbox(
+                        &mut self.settings.picker.use_standard_zoom_range,
+                        "Use standard zoom range",
+                    )
+                    .on_hover_text("Limits the magnifier to the standard five zoom levels.")
+                    .changed();
+                ui.end_row();
+                ui.label("Maximum zoom level");
+                self.dirty |= ui
+                    .add_enabled(
+                        !self.settings.picker.use_standard_zoom_range,
+                        egui::DragValue::new(&mut self.settings.picker.maximum_zoom_level)
+                            .range(1..=MAX_PICKER_MAX_ZOOM_LEVEL)
+                            .speed(1.0),
+                    )
+                    .on_disabled_hover_text("Turn off the standard zoom range to customize this.")
                     .changed();
                 ui.end_row();
             });
