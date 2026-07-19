@@ -10,7 +10,10 @@ use crate::{
     APP_NAME,
     capture::{CaptureBackend, CaptureFrame, capture_screen},
     color::{Rgb, format_template},
-    config::{ActivationAction, ClickAction, History, STANDARD_PICKER_MAX_ZOOM_LEVEL, Settings},
+    config::{
+        ActivationAction, ClickAction, History, LoupeStyle, STANDARD_PICKER_MAX_ZOOM_LEVEL,
+        Settings,
+    },
     measurement::Point,
 };
 use eframe::egui::{self, Color32, FontId, Pos2, Rect, Stroke};
@@ -178,16 +181,28 @@ impl PickerApp {
         let color = self.selected_color();
         let value = format_template(color, self.settings.selected_format());
         let name = self.settings.picker.show_color_name.then(|| color.name());
+        let selected_position = point_position(&self.frame, self.point, image_rect);
+        let centered = self.settings.picker.loupe_style == LoupeStyle::Centered;
+        let anchor = if centered {
+            ctx.input(|input| input.pointer.hover_pos())
+                .unwrap_or(selected_position)
+        } else {
+            selected_position
+        };
         draw_shared_loupe(
             ctx,
             Loupe {
                 frame: &self.frame,
                 point: self.point,
-                anchor: point_position(&self.frame, self.point, image_rect),
+                anchor,
                 image_rect,
                 zoom_level: self.zoom_level,
                 cells: 13,
-                placement: LoupePlacement::Tooltip,
+                placement: if centered {
+                    LoupePlacement::Centered
+                } else {
+                    LoupePlacement::Tooltip
+                },
                 details: Some(LoupeDetails {
                     value: &value,
                     name,

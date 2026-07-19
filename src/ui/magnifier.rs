@@ -9,7 +9,7 @@ use super::{
 use crate::{
     APP_NAME,
     capture::{CaptureBackend, CaptureFrame, capture_screen},
-    config::{MagnifierStyle, Settings},
+    config::{LoupeStyle, Settings},
     measurement::Point,
 };
 use eframe::egui::{self, Color32, FontId, Pos2, Rect};
@@ -92,7 +92,7 @@ impl MagnifierApp {
         let anchor = ctx
             .input(|input| input.pointer.hover_pos())
             .unwrap_or_else(|| point_position(&self.frame, self.point, image_rect));
-        let tooltip = self.settings.magnifier.style == MagnifierStyle::Tooltip;
+        let tooltip = self.settings.magnifier.style == LoupeStyle::Tooltip;
         draw_shared_loupe(
             ctx,
             Loupe {
@@ -133,8 +133,8 @@ impl eframe::App for MagnifierApp {
                     CaptureBackend::File => "image preview",
                 };
                 let style = match self.settings.magnifier.style {
-                    MagnifierStyle::Centered => "centered on pointer",
-                    MagnifierStyle::Tooltip => "tooltip",
+                    LoupeStyle::Centered => "centered on pointer",
+                    LoupeStyle::Tooltip => "tooltip",
                 };
                 let help = format!(
                     "{style}  •  wheel zooms  •  Esc closes  •  zoom {}/{}  •  {}×{} grid  •  {source}",

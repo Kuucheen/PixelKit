@@ -19,7 +19,8 @@ https://github.com/user-attachments/assets/fd06e8b0-96c1-4ea9-b514-56c151987239
 ### Color Picker, Magnifier, and editor
 
 - Pick any captured pixel with an always-on-top full-screen overlay.
-- 13×13 magnifier with five wheel-controlled zoom levels.
+- 13×13 loupe with tooltip and pointer-centered styles with up to 255
+  wheel-controlled zoom levels.
 - Standalone magnifier with centered-grid and tooltip styles plus
   configurable starting/maximum zoom, grid size, cursor, Wayland capture
   behavior, and global shortcut.

@@ -151,6 +151,7 @@ pub struct FormatSetting {
 pub struct PickerSettings {
     pub shortcut: String,
     pub activation_action: ActivationAction,
+    pub loupe_style: LoupeStyle,
     pub copied_format: String,
     pub primary_click: ClickAction,
     pub middle_click: ClickAction,
@@ -174,6 +175,7 @@ impl Default for PickerSettings {
         Self {
             shortcut: "Super+Shift+C".into(),
             activation_action: ActivationAction::Picker,
+            loupe_style: LoupeStyle::Tooltip,
             copied_format: "HEX".into(),
             primary_click: ClickAction::PickThenEditor,
             middle_click: ClickAction::PickAndClose,
@@ -201,14 +203,14 @@ impl Default for PickerSettings {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
-pub enum MagnifierStyle {
+pub enum LoupeStyle {
     #[default]
     Centered,
     #[serde(alias = "picker_tooltip")]
     Tooltip,
 }
 
-impl MagnifierStyle {
+impl LoupeStyle {
     pub const ALL: [Self; 2] = [Self::Centered, Self::Tooltip];
 
     pub const fn label(self) -> &'static str {
@@ -223,7 +225,7 @@ impl MagnifierStyle {
 #[serde(default)]
 pub struct MagnifierSettings {
     pub shortcut: String,
-    pub style: MagnifierStyle,
+    pub style: LoupeStyle,
     pub initial_zoom_level: u8,
     pub maximum_zoom_level: u8,
     pub grid_size: u8,
@@ -237,7 +239,7 @@ impl Default for MagnifierSettings {
     fn default() -> Self {
         Self {
             shortcut: "Super+Shift+Z".into(),
-            style: MagnifierStyle::Centered,
+            style: LoupeStyle::Centered,
             initial_zoom_level: 2,
             maximum_zoom_level: STANDARD_PICKER_MAX_ZOOM_LEVEL,
             grid_size: 13,
@@ -448,7 +450,8 @@ mod tests {
         );
         assert_eq!(settings.ruler.pixel_tolerance, 30);
         assert_eq!(settings.magnifier.initial_zoom_level, 2);
-        assert_eq!(settings.magnifier.style, MagnifierStyle::Centered);
+        assert_eq!(settings.picker.loupe_style, LoupeStyle::Tooltip);
+        assert_eq!(settings.magnifier.style, LoupeStyle::Centered);
         assert_eq!(
             settings.magnifier.maximum_zoom_level,
             STANDARD_PICKER_MAX_ZOOM_LEVEL
@@ -472,6 +475,7 @@ mod tests {
         let settings: Settings =
             serde_json::from_str(r#"{"picker":{"copied_format":"RGB"}}"#).unwrap();
         assert_eq!(settings.picker.copied_format, "RGB");
+        assert_eq!(settings.picker.loupe_style, LoupeStyle::Tooltip);
         assert_eq!(settings.picker.default_editor_view, EditorView::Compact);
         assert!(settings.picker.use_standard_zoom_range);
         assert_eq!(
@@ -528,6 +532,16 @@ mod tests {
     }
 
     #[test]
+    fn picker_loupe_style_serializes_stably() {
+        let settings: Settings =
+            serde_json::from_str(r#"{"picker":{"loupe_style":"centered"}}"#).unwrap();
+        assert_eq!(settings.picker.loupe_style, LoupeStyle::Centered);
+
+        let json = serde_json::to_value(settings).unwrap();
+        assert_eq!(json["picker"]["loupe_style"], "centered");
+    }
+
+    #[test]
     fn magnifier_settings_are_version_tolerant_and_normalized() {
         let mut settings: Settings = serde_json::from_str(
             r#"{"magnifier":{"style":"picker_tooltip","initial_zoom_level":200,"maximum_zoom_level":12,"grid_size":8}}"#,
@@ -535,7 +549,7 @@ mod tests {
         .unwrap();
         settings.normalize();
         assert_eq!(settings.magnifier.initial_zoom_level, 12);
-        assert_eq!(settings.magnifier.style, MagnifierStyle::Tooltip);
+        assert_eq!(settings.magnifier.style, LoupeStyle::Tooltip);
         assert_eq!(settings.magnifier.maximum_zoom_level, 12);
         assert_eq!(settings.magnifier.grid_size, 13);
 

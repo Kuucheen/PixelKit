@@ -3,9 +3,9 @@ use crate::{
     APP_NAME, VERSION,
     color::{FORMAT_NAMES, Rgb, format_template},
     config::{
-        ActivationAction, ClickAction, EditorView, EditorViewSwitchPosition, History,
-        MAGNIFIER_GRID_SIZES, MAX_MAGNIFIER_ZOOM_LEVEL, MAX_PICKER_MAX_ZOOM_LEVEL, MagnifierStyle,
-        RulerMode, Settings, Unit,
+        ActivationAction, ClickAction, EditorView, EditorViewSwitchPosition, History, LoupeStyle,
+        MAGNIFIER_GRID_SIZES, MAX_MAGNIFIER_ZOOM_LEVEL, MAX_PICKER_MAX_ZOOM_LEVEL, RulerMode,
+        Settings, Unit,
     },
 };
 use eframe::egui::{self, RichText};
@@ -197,7 +197,7 @@ impl HubApp {
                 egui::ComboBox::from_id_salt("magnifier_style")
                     .selected_text(self.settings.magnifier.style.label())
                     .show_ui(ui, |ui| {
-                        for style in MagnifierStyle::ALL {
+                        for style in LoupeStyle::ALL {
                             self.dirty |= ui
                                 .selectable_value(
                                     &mut self.settings.magnifier.style,
@@ -304,6 +304,21 @@ impl HubApp {
                                 "Open editor",
                             )
                             .changed();
+                    });
+                ui.end_row();
+                ui.label("Display style");
+                egui::ComboBox::from_id_salt("picker_loupe_style")
+                    .selected_text(self.settings.picker.loupe_style.label())
+                    .show_ui(ui, |ui| {
+                        for style in LoupeStyle::ALL {
+                            self.dirty |= ui
+                                .selectable_value(
+                                    &mut self.settings.picker.loupe_style,
+                                    style,
+                                    style.label(),
+                                )
+                                .changed();
+                        }
                     });
                 ui.end_row();
                 ui.label("Default editor view");

@@ -89,7 +89,8 @@ renderer. The upstream repository is `git@github.com:Kuucheen/PixelKit.git`.
   touchpad Point events accumulate gradually.
 - The picker loupe has no fixed minimum content width. Its box width is derived
   from the 13x13 grid, formatted value, and optional color name. The color
-  swatch width is exactly the magnified grid width.
+  swatch width is exactly the magnified grid width. Tooltip and pointer-centered
+  picker styles must both use the shared loupe renderer.
 - The picker and standalone magnifier must use the shared loupe renderer. The
   magnifier can keep its grid centered on the live pointer or use tooltip
   placement. Magnifier modes intentionally omit picker color details.
