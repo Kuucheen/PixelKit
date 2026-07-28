@@ -7,8 +7,8 @@ After=graphical-session.target xdg-desktop-portal.service
 [Service]
 Type=simple
 ExecStart=/usr/bin/pixelkit daemon
-Restart=on-abnormal
+Restart=on-failure
 RestartSec=3
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target

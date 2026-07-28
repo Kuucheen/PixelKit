@@ -11,7 +11,9 @@ sed -i "s|ExecStart=/usr/bin/pixelkit|ExecStart=$prefix/bin/pixelkit|" "$user_un
 
 if command -v systemctl >/dev/null 2>&1; then
     systemctl --user daemon-reload
-    echo "Enable shortcuts with: systemctl --user enable --now pixelkit.service"
+    echo "Enable shortcuts with:"
+    echo "  systemctl --user reenable pixelkit.service"
+    echo "  systemctl --user restart pixelkit.service"
 else
     autostart="${XDG_CONFIG_HOME:-$HOME/.config}/autostart"
     mkdir -p "$autostart"

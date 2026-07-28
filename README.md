@@ -178,8 +178,12 @@ pixelkit screen-ruler
 Enable background shortcuts for native packages:
 
 ```bash
-systemctl --user enable --now pixelkit.service
+systemctl --user reenable pixelkit.service
+systemctl --user restart pixelkit.service
 ```
+
+`reenable` also removes obsolete early-start links created by older PixelKit
+packages, so the daemon starts only after the graphical session is ready.
 
 On Wayland, the desktop owns the active key combinations. If it registered the
 actions without assigning keys, open its PixelKit shortcut page with:

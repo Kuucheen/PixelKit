@@ -14,16 +14,36 @@ const RULER_ID: &str = "screen-ruler";
 
 type PortalShortcut = (String, String, String);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ShortcutBackend {
+    Wayland,
+    X11,
+}
+
 pub fn run() -> Result<()> {
     let _lock = DaemonLock::acquire()?;
     let settings = Settings::load_or_default();
-    if is_wayland_session() {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()?;
-        runtime.block_on(run_portal(settings))
+    match shortcut_backend(is_wayland_session(), env::var_os("DISPLAY").is_some()) {
+        Some(ShortcutBackend::Wayland) => {
+            let runtime = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()?;
+            runtime.block_on(run_portal(settings))
+        }
+        Some(ShortcutBackend::X11) => run_x11(settings),
+        None => Err(anyhow!(
+            "graphical session environment is not available yet; retry after login"
+        )),
+    }
+}
+
+fn shortcut_backend(wayland_session: bool, x11_display: bool) -> Option<ShortcutBackend> {
+    if wayland_session {
+        Some(ShortcutBackend::Wayland)
+    } else if x11_display {
+        Some(ShortcutBackend::X11)
     } else {
-        run_x11(settings)
+        None
     }
 }
 
@@ -319,5 +339,23 @@ mod tests {
     #[test]
     fn portal_application_id_is_valid() {
         assert!(APP_ID.parse::<ashpd::AppID>().is_ok());
+    }
+
+    #[test]
+    fn daemon_waits_for_a_graphical_session_environment() {
+        assert_eq!(shortcut_backend(false, false), None);
+        assert_eq!(shortcut_backend(false, true), Some(ShortcutBackend::X11));
+        assert_eq!(shortcut_backend(true, true), Some(ShortcutBackend::Wayland));
+    }
+
+    #[test]
+    fn packaged_daemon_starts_with_the_graphical_session() {
+        let unit = include_str!("../packaging/linux/pixelkit.service");
+        assert!(
+            unit.lines()
+                .any(|line| line == "WantedBy=graphical-session.target")
+        );
+        assert!(!unit.lines().any(|line| line == "WantedBy=default.target"));
+        assert!(unit.lines().any(|line| line == "Restart=on-failure"));
     }
 }

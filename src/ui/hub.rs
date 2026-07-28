@@ -722,31 +722,19 @@ impl HubApp {
             if ui.button("Start for this session").clicked() {
                 self.launch("daemon");
             }
-            if ui.button("Enable systemd user service").clicked() {
-                match Command::new("systemctl")
-                    .args(["--user", "enable", "--now", "pixelkit.service"])
-                    .stdin(Stdio::null())
-                    .output()
+            if ui.button("Start automatically at login").clicked() {
+                match user_systemctl(&["reenable", "pixelkit.service"])
+                    .and_then(|()| user_systemctl(&["restart", "pixelkit.service"]))
                 {
-                    Ok(output) if output.status.success() => {
-                        self.message("Background shortcuts enabled")
-                    }
-                    Ok(output) => self.message(format!(
-                        "systemctl failed: {}",
-                        String::from_utf8_lossy(&output.stderr).trim()
-                    )),
-                    Err(error) => self.message(format!("systemctl is unavailable: {error}")),
+                    Ok(()) => self.message("Background shortcuts enabled for future logins"),
+                    Err(error) => self.message(error),
                 }
             }
             if ui.button("Restart service").clicked() {
-                let status = Command::new("systemctl")
-                    .args(["--user", "restart", "pixelkit.service"])
-                    .status();
-                self.message(if status.is_ok_and(|status| status.success()) {
-                    "Service restarted"
-                } else {
-                    "Could not restart service"
-                });
+                match user_systemctl(&["restart", "pixelkit.service"]) {
+                    Ok(()) => self.message("Service restarted"),
+                    Err(error) => self.message(error),
+                }
             }
         });
         ui.add_space(16.0);
@@ -781,6 +769,26 @@ fn click_combo(ui: &mut egui::Ui, id: &str, value: &mut ClickAction, dirty: &mut
                 *dirty |= ui.selectable_value(value, action, action.label()).changed();
             }
         });
+}
+
+fn user_systemctl(arguments: &[&str]) -> Result<(), String> {
+    let output = Command::new("systemctl")
+        .arg("--user")
+        .args(arguments)
+        .stdin(Stdio::null())
+        .output()
+        .map_err(|error| format!("systemctl is unavailable: {error}"))?;
+    if output.status.success() {
+        return Ok(());
+    }
+
+    let detail = String::from_utf8_lossy(&output.stderr);
+    let detail = detail.trim();
+    Err(if detail.is_empty() {
+        format!("systemctl failed with {}", output.status)
+    } else {
+        format!("systemctl failed: {detail}")
+    })
 }
 
 fn centered_setting_row<R>(
