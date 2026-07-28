@@ -277,224 +277,308 @@ impl HubApp {
 
     fn picker(&mut self, ui: &mut egui::Ui) {
         ui.heading("Color Picker");
-        ui.label("The selected format is copied when you pick a pixel.");
-        ui.separator();
-        egui::Grid::new("picker_general")
-            .num_columns(2)
-            .spacing([18.0, 12.0])
-            .show(ui, |ui| {
-                ui.label("Activation action");
-                egui::ComboBox::from_id_salt("activation_action")
-                    .selected_text(match self.settings.picker.activation_action {
-                        ActivationAction::Picker => "Open picker",
-                        ActivationAction::Editor => "Open editor",
-                    })
-                    .show_ui(ui, |ui| {
+        ui.label("Configure how picking behaves and what appears in the magnified loupe.");
+        ui.add_space(12.0);
+
+        if ui.available_width() >= 680.0 {
+            ui.columns(2, |columns| {
+                self.picker_behavior_panel(&mut columns[0]);
+                self.picker_loupe_panel(&mut columns[1]);
+            });
+        } else {
+            self.picker_behavior_panel(ui);
+            ui.add_space(12.0);
+            self.picker_loupe_panel(ui);
+        }
+
+        ui.add_space(12.0);
+        self.picker_editor_panel(ui);
+        ui.add_space(16.0);
+        egui::CollapsingHeader::new(
+            RichText::new("Formats and templates").size(18.0).strong(),
+        )
+        .default_open(false)
+        .show(ui, |ui| {
+            ui.label(RichText::new("Enable formats for the editor or customize their PowerToys-compatible templates. Changes preview against #336699.").weak());
+            ui.add_space(8.0);
+            let preview = Rgb::new(51, 102, 153);
+            for name in FORMAT_NAMES {
+                if let Some(format) = self
+                    .settings
+                    .picker
+                    .formats
+                    .iter_mut()
+                    .find(|format| format.name == name)
+                {
+                    ui.horizontal(|ui| {
+                        self.dirty |= ui.checkbox(&mut format.enabled, &format.name).changed();
                         self.dirty |= ui
-                            .selectable_value(
-                                &mut self.settings.picker.activation_action,
-                                ActivationAction::Picker,
-                                "Open picker",
+                            .add_sized(
+                                [330.0, 24.0],
+                                egui::TextEdit::singleline(&mut format.template),
                             )
                             .changed();
-                        self.dirty |= ui
-                            .selectable_value(
-                                &mut self.settings.picker.activation_action,
-                                ActivationAction::Editor,
-                                "Open editor",
-                            )
-                            .changed();
+                        ui.label(
+                            RichText::new(format_template(preview, &format.template))
+                                .monospace()
+                                .weak(),
+                        );
                     });
-                ui.end_row();
-                ui.label("Display style");
-                egui::ComboBox::from_id_salt("picker_loupe_style")
-                    .selected_text(self.settings.picker.loupe_style.label())
-                    .show_ui(ui, |ui| {
-                        for style in LoupeStyle::ALL {
+                }
+            }
+        });
+    }
+
+    fn picker_behavior_panel(&mut self, ui: &mut egui::Ui) {
+        panel_frame().show(ui, |ui| {
+            ui.set_min_width(ui.available_width());
+            ui.heading("Picking");
+            ui.label(RichText::new("Choose what starts, closes, or follows a pick.").weak());
+            ui.add_space(8.0);
+            egui::Grid::new("picker_behavior")
+                .num_columns(2)
+                .spacing([18.0, 12.0])
+                .show(ui, |ui| {
+                    ui.label("Activation action");
+                    egui::ComboBox::from_id_salt("activation_action")
+                        .selected_text(match self.settings.picker.activation_action {
+                            ActivationAction::Picker => "Open picker",
+                            ActivationAction::Editor => "Open editor",
+                        })
+                        .show_ui(ui, |ui| {
                             self.dirty |= ui
                                 .selectable_value(
-                                    &mut self.settings.picker.loupe_style,
-                                    style,
-                                    style.label(),
+                                    &mut self.settings.picker.activation_action,
+                                    ActivationAction::Picker,
+                                    "Open picker",
                                 )
                                 .changed();
-                        }
-                    });
-                ui.end_row();
-                ui.label("Default editor view");
-                egui::ComboBox::from_id_salt("default_editor_view")
-                    .selected_text(self.settings.picker.default_editor_view.label())
-                    .show_ui(ui, |ui| {
-                        for view in EditorView::ALL {
                             self.dirty |= ui
                                 .selectable_value(
-                                    &mut self.settings.picker.default_editor_view,
-                                    view,
-                                    view.label(),
+                                    &mut self.settings.picker.activation_action,
+                                    ActivationAction::Editor,
+                                    "Open editor",
                                 )
                                 .changed();
-                        }
-                    });
-                ui.end_row();
-                ui.label("View switch position");
-                egui::ComboBox::from_id_salt("editor_view_switch_position")
-                    .selected_text(self.settings.picker.editor_view_switch_position.label())
-                    .show_ui(ui, |ui| {
-                        for position in EditorViewSwitchPosition::ALL {
-                            self.dirty |= ui
-                                .selectable_value(
-                                    &mut self.settings.picker.editor_view_switch_position,
-                                    position,
-                                    position.label(),
-                                )
-                                .changed();
-                        }
-                    });
-                ui.end_row();
-                ui.label("Copied format");
-                egui::ComboBox::from_id_salt("copied_format")
-                    .selected_text(&self.settings.picker.copied_format)
-                    .show_ui(ui, |ui| {
-                        for format in &self.settings.picker.formats {
-                            self.dirty |= ui
-                                .selectable_value(
-                                    &mut self.settings.picker.copied_format,
-                                    format.name.clone(),
-                                    &format.name,
-                                )
-                                .changed();
-                        }
-                    });
-                ui.end_row();
-                ui.label("Color name position");
-                egui::ComboBox::from_id_salt("color_name_position")
-                    .selected_text(self.settings.picker.color_name_position.label())
-                    .show_ui(ui, |ui| {
-                        for position in ColorNamePosition::ALL {
-                            self.dirty |= ui
-                                .selectable_value(
-                                    &mut self.settings.picker.color_name_position,
-                                    position,
-                                    position.label(),
-                                )
-                                .changed();
-                        }
-                    });
-                ui.end_row();
-                ui.label("Primary click");
-                click_combo(
+                        });
+                    ui.end_row();
+                    ui.label("Primary click");
+                    click_combo(
+                        ui,
+                        "primary",
+                        &mut self.settings.picker.primary_click,
+                        &mut self.dirty,
+                    );
+                    ui.end_row();
+                    ui.label("Middle click");
+                    click_combo(
+                        ui,
+                        "middle",
+                        &mut self.settings.picker.middle_click,
+                        &mut self.dirty,
+                    );
+                    ui.end_row();
+                    ui.label("Secondary click");
+                    click_combo(
+                        ui,
+                        "secondary",
+                        &mut self.settings.picker.secondary_click,
+                        &mut self.dirty,
+                    );
+                    ui.end_row();
+                    ui.label("History limit");
+                    self.dirty |= ui
+                        .add(
+                            egui::DragValue::new(&mut self.settings.picker.history_limit)
+                                .range(1..=10_000),
+                        )
+                        .changed();
+                    ui.end_row();
+                });
+            ui.add_space(6.0);
+            self.dirty |= ui
+                .checkbox(
+                    &mut self.settings.picker.change_cursor,
+                    "Use a crosshair cursor",
+                )
+                .changed();
+            self.dirty |= ui
+                .checkbox(
+                    &mut self.settings.picker.interactive_portal,
+                    "Ask which screen or area to capture on Wayland",
+                )
+                .on_hover_text("Lets the Wayland portal show its target selector.")
+                .changed();
+        });
+    }
+
+    fn picker_loupe_panel(&mut self, ui: &mut egui::Ui) {
+        panel_frame().show(ui, |ui| {
+            ui.set_min_width(ui.available_width());
+            ui.heading("Loupe");
+            ui.label(RichText::new("Control the magnified grid and its color details.").weak());
+            ui.add_space(8.0);
+            egui::Grid::new("picker_loupe_display")
+                .num_columns(2)
+                .spacing([18.0, 12.0])
+                .show(ui, |ui| {
+                    ui.label("Display style");
+                    egui::ComboBox::from_id_salt("picker_loupe_style")
+                        .selected_text(self.settings.picker.loupe_style.label())
+                        .show_ui(ui, |ui| {
+                            for style in LoupeStyle::ALL {
+                                self.dirty |= ui
+                                    .selectable_value(
+                                        &mut self.settings.picker.loupe_style,
+                                        style,
+                                        style.label(),
+                                    )
+                                    .changed();
+                            }
+                        });
+                    ui.end_row();
+                    ui.label("Copied format");
+                    egui::ComboBox::from_id_salt("copied_format")
+                        .selected_text(&self.settings.picker.copied_format)
+                        .show_ui(ui, |ui| {
+                            for format in &self.settings.picker.formats {
+                                self.dirty |= ui
+                                    .selectable_value(
+                                        &mut self.settings.picker.copied_format,
+                                        format.name.clone(),
+                                        &format.name,
+                                    )
+                                    .changed();
+                            }
+                        });
+                    ui.end_row();
+                });
+
+            ui.add_space(8.0);
+            ui.strong("Details");
+            self.dirty |= ui
+                .checkbox(
+                    &mut self.settings.picker.show_copied_value,
+                    "Show the copied value",
+                )
+                .on_hover_text("This only controls the loupe; picking still copies the value.")
+                .changed();
+            self.dirty |= ui
+                .checkbox(
+                    &mut self.settings.picker.show_color_name,
+                    "Show the nearest color name",
+                )
+                .on_hover_text("Uses the same color name shown in the compact editor.")
+                .changed();
+
+            let show_color_name = self.settings.picker.show_color_name;
+            let position = ui.add_enabled_ui(show_color_name, |ui| {
+                dependent_setting_row(
                     ui,
-                    "primary",
-                    &mut self.settings.picker.primary_click,
-                    &mut self.dirty,
+                    "Color name position",
+                    SettingControlText::ComboBox,
+                    |ui| {
+                        egui::ComboBox::from_id_salt("color_name_position")
+                            .selected_text(self.settings.picker.color_name_position.label())
+                            .show_ui(ui, |ui| {
+                                for position in ColorNamePosition::ALL {
+                                    self.dirty |= ui
+                                        .selectable_value(
+                                            &mut self.settings.picker.color_name_position,
+                                            position,
+                                            position.label(),
+                                        )
+                                        .changed();
+                                }
+                            })
+                            .response
+                    },
                 );
-                ui.end_row();
-                ui.label("Middle click");
-                click_combo(
-                    ui,
-                    "middle",
-                    &mut self.settings.picker.middle_click,
-                    &mut self.dirty,
-                );
-                ui.end_row();
-                ui.label("Secondary click");
-                click_combo(
-                    ui,
-                    "secondary",
-                    &mut self.settings.picker.secondary_click,
-                    &mut self.dirty,
-                );
-                ui.end_row();
-                ui.label("History limit");
-                self.dirty |= ui
-                    .add(
-                        egui::DragValue::new(&mut self.settings.picker.history_limit)
-                            .range(1..=10_000),
-                    )
-                    .changed();
-                ui.end_row();
+            });
+            position
+                .response
+                .on_disabled_hover_text("Turn on “Show the nearest color name” first.");
+
+            ui.add_space(8.0);
+            ui.strong("Magnification");
+            centered_setting_row(ui, |ui| {
                 ui.label("Zoom range");
                 self.dirty |= ui
                     .checkbox(
                         &mut self.settings.picker.use_standard_zoom_range,
-                        "Use standard zoom range",
+                        "Use standard range",
                     )
-                    .on_hover_text("Limits the magnifier to the standard five zoom levels.")
+                    .on_hover_text("Limits the loupe to the standard five zoom levels.")
                     .changed();
-                ui.end_row();
-                ui.label("Maximum zoom level");
-                self.dirty |= ui
-                    .add_enabled(
-                        !self.settings.picker.use_standard_zoom_range,
+            });
+            let custom_zoom_range = !self.settings.picker.use_standard_zoom_range;
+            let maximum = ui.add_enabled_ui(custom_zoom_range, |ui| {
+                dependent_setting_row(ui, "Maximum level", SettingControlText::Centered, |ui| {
+                    let response = ui.add(
                         egui::DragValue::new(&mut self.settings.picker.maximum_zoom_level)
                             .range(1..=MAX_PICKER_MAX_ZOOM_LEVEL)
                             .speed(1.0),
-                    )
-                    .on_disabled_hover_text("Turn off the standard zoom range to customize this.")
-                    .changed();
-                ui.end_row();
-            });
-        self.dirty |= ui
-            .checkbox(
-                &mut self.settings.picker.change_cursor,
-                "Use a crosshair cursor",
-            )
-            .changed();
-        self.dirty |= ui
-            .checkbox(
-                &mut self.settings.picker.show_color_name,
-                "Show the nearest color name in the picker loupe",
-            )
-            .on_hover_text("Uses the same color name shown in the compact editor.")
-            .changed();
-        self.dirty |= ui
-            .checkbox(
-                &mut self.settings.picker.show_copied_value,
-                "Show the copied value in the picker loupe",
-            )
-            .on_hover_text("This only controls the display; picking still copies the value.")
-            .changed();
-        self.dirty |= ui
-            .checkbox(
-                &mut self.settings.picker.single_editor_instance,
-                "Keep only one color editor open",
-            )
-            .on_hover_text("Opening a new editor closes the existing editor first.")
-            .changed();
-        self.dirty |= ui
-            .checkbox(
-                &mut self.settings.picker.interactive_portal,
-                "Let the Wayland portal ask which screen/area to capture",
-            )
-            .changed();
-        ui.add_space(16.0);
-        ui.heading("Visible formats and templates");
-        ui.label(RichText::new("Tokens include %Re/%Gr/%Bl, %Hu, %Sl, %Na and the full PowerToys token set. Changes preview against #336699.").weak());
-        let preview = Rgb::new(51, 102, 153);
-        for name in FORMAT_NAMES {
-            if let Some(format) = self
-                .settings
-                .picker
-                .formats
-                .iter_mut()
-                .find(|format| format.name == name)
-            {
-                ui.horizontal(|ui| {
-                    self.dirty |= ui.checkbox(&mut format.enabled, &format.name).changed();
-                    self.dirty |= ui
-                        .add_sized(
-                            [330.0, 24.0],
-                            egui::TextEdit::singleline(&mut format.template),
-                        )
-                        .changed();
-                    ui.label(
-                        RichText::new(format_template(preview, &format.template))
-                            .monospace()
-                            .weak(),
                     );
+                    self.dirty |= response.changed();
+                    response
                 });
-            }
-        }
+            });
+            maximum
+                .response
+                .on_disabled_hover_text("Turn off the standard zoom range to customize this.");
+        });
+    }
+
+    fn picker_editor_panel(&mut self, ui: &mut egui::Ui) {
+        panel_frame().show(ui, |ui| {
+            ui.set_min_width(ui.available_width());
+            ui.heading("Color editor");
+            ui.label(RichText::new("Configure the editor opened before or after picking.").weak());
+            ui.add_space(8.0);
+            egui::Grid::new("picker_editor")
+                .num_columns(2)
+                .spacing([18.0, 12.0])
+                .show(ui, |ui| {
+                    ui.label("Default view");
+                    egui::ComboBox::from_id_salt("default_editor_view")
+                        .selected_text(self.settings.picker.default_editor_view.label())
+                        .show_ui(ui, |ui| {
+                            for view in EditorView::ALL {
+                                self.dirty |= ui
+                                    .selectable_value(
+                                        &mut self.settings.picker.default_editor_view,
+                                        view,
+                                        view.label(),
+                                    )
+                                    .changed();
+                            }
+                        });
+                    ui.end_row();
+                    ui.label("View switch position");
+                    egui::ComboBox::from_id_salt("editor_view_switch_position")
+                        .selected_text(self.settings.picker.editor_view_switch_position.label())
+                        .show_ui(ui, |ui| {
+                            for position in EditorViewSwitchPosition::ALL {
+                                self.dirty |= ui
+                                    .selectable_value(
+                                        &mut self.settings.picker.editor_view_switch_position,
+                                        position,
+                                        position.label(),
+                                    )
+                                    .changed();
+                            }
+                        });
+                    ui.end_row();
+                });
+            ui.add_space(6.0);
+            self.dirty |= ui
+                .checkbox(
+                    &mut self.settings.picker.single_editor_instance,
+                    "Keep only one color editor open",
+                )
+                .on_hover_text("Opening a new editor closes the existing editor first.")
+                .changed();
+        });
     }
 
     fn ruler(&mut self, ui: &mut egui::Ui) {
@@ -692,6 +776,81 @@ fn click_combo(ui: &mut egui::Ui, id: &str, value: &mut ClickAction, dirty: &mut
                 *dirty |= ui.selectable_value(value, action, action.label()).changed();
             }
         });
+}
+
+fn centered_setting_row<R>(
+    ui: &mut egui::Ui,
+    add_contents: impl FnOnce(&mut egui::Ui) -> R,
+) -> egui::InnerResponse<R> {
+    ui.horizontal(add_contents)
+}
+
+#[derive(Clone, Copy)]
+enum SettingControlText {
+    Centered,
+    ComboBox,
+}
+
+fn dependent_setting_row(
+    ui: &mut egui::Ui,
+    label: &str,
+    control_text: SettingControlText,
+    add_control: impl FnOnce(&mut egui::Ui) -> egui::Response,
+) -> egui::InnerResponse<egui::Response> {
+    let indent = ui.spacing().indent;
+    let row = ui.horizontal(|ui| {
+        ui.add_space(indent);
+        centered_setting_label(ui, label, control_text);
+        add_control(ui)
+    });
+
+    let control_rect = row.inner.rect;
+    if ui.is_rect_visible(control_rect) {
+        let guide_x = row.response.rect.left() + indent * 0.5;
+        ui.painter().line_segment(
+            [
+                egui::pos2(guide_x, control_rect.top()),
+                egui::pos2(guide_x, control_rect.bottom()),
+            ],
+            ui.visuals().widgets.noninteractive.bg_stroke,
+        );
+    }
+
+    row
+}
+
+fn centered_setting_label(
+    ui: &mut egui::Ui,
+    text: &str,
+    control_text: SettingControlText,
+) -> egui::Response {
+    let font = egui::TextStyle::Body.resolve(ui.style());
+    let color = ui.visuals().text_color();
+    let galley = ui.painter().layout_no_wrap(text.to_owned(), font, color);
+    let spacing = ui.spacing();
+    let icon_width = spacing.icon_width;
+    let button_padding_y = spacing.button_padding.y;
+    let interact_height = spacing.interact_size.y;
+    let control_height =
+        (galley.size().y.max(icon_width) + button_padding_y * 2.0).max(interact_height);
+    let size = egui::vec2(galley.size().x.ceil(), control_height);
+    let (rect, response) = ui.allocate_exact_size(size, egui::Sense::hover());
+    response
+        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), text));
+    if ui.is_rect_visible(rect) {
+        let optical_offset = match control_text {
+            SettingControlText::Centered => 0.0,
+            // ComboBox lays out its text in an inset child UI, which places
+            // its baseline lower than controls that center their text.
+            SettingControlText::ComboBox => (button_padding_y * 0.75).round(),
+        };
+        let position = egui::pos2(
+            rect.left(),
+            rect.center().y - galley.size().y * 0.5 + optical_offset,
+        );
+        ui.painter().galley(position, galley, color);
+    }
+    response
 }
 
 impl eframe::App for HubApp {
