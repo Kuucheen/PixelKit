@@ -88,8 +88,13 @@ and checksum manifest to the GitHub release.
   successful build, users can install it with
   `sudo dnf copr enable kuchen/pixelkit` followed by
   `sudo dnf install pixelkit`.
-- **AUR:** copy `PKGBUILD`, run `updpkgsums` if switching from the tagged VCS
-  source to a release tarball, then generate `.SRCINFO` with `makepkg --printsrcinfo`.
+- **AUR:** after the GitHub release archive and `SHA256SUMS` are public, run
+  `./scripts/publish-aur.sh`. It clones or fast-forwards the adjacent
+  `PixelKit-AUR` checkout, imports the published archive checksum, regenerates
+  `.SRCINFO` and verifies the source in an Arch container, then commits and
+  pushes both files. Use `--no-push` to perform every preparation and
+  verification step without committing. Changes to the recipe itself still
+  require a full Arch container build and `namcap` review.
 - **Debian/Ubuntu (OBS):** `./scripts/build-packages.sh --clean deb-source`
   creates the standard `.dsc`, `.orig.tar.xz`, and `.debian.tar.xz` source
   bundle. `./scripts/publish-obs.sh --watch` replaces the source bundle in the

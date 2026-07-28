@@ -222,6 +222,15 @@ revisions for the new version. For another package revision of the same
 upstream version, use `--bump "Short changelog summary"` instead. Neither option
 commits, tags, pushes, or publishes anything.
 
+After the tagged GitHub release and its checksum manifest are public, publish
+the matching vendored archive to the AUR with:
+
+```bash
+./scripts/publish-aur.sh
+```
+
+Use `--no-push` for a full preparation and source-verification rehearsal.
+
 `make packages` is a shorthand, with optional arguments supplied through
 `PACKAGE_ARGS`. If an RPM builder is installed without the spec's development
 packages, `--list` reports the missing package names; on Fedora they can all be

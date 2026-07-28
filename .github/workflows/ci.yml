@@ -30,7 +30,8 @@ jobs:
       - name: Check package automation
         run: |
           bash -n scripts/build-packages.sh scripts/make-debian-source.sh \
-            scripts/make-dist.sh scripts/publish-obs.sh scripts/vendor.sh \
+            scripts/make-dist.sh scripts/publish-aur.sh scripts/publish-obs.sh \
+            scripts/vendor.sh \
             packaging/appimage/build-appimage.sh
           python3 scripts/bump-package-release.py --dry-run "Validate package automation"
           python3 scripts/set-version.py --dry-run 999.0.0
@@ -39,6 +40,7 @@ jobs:
           ./scripts/make-debian-source.sh
           debian_version="$(sed -n '1s/^pixelkit (\([^)]*\)).*/\1/p' debian/changelog)"
           test -s "dist/pixelkit_${debian_version}.dsc"
+          ./scripts/publish-aur.sh --help >/dev/null
           ./scripts/publish-obs.sh --help >/dev/null
       - name: Check generated Flatpak sources
         run: |
