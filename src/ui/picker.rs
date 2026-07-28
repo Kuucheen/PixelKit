@@ -11,8 +11,8 @@ use crate::{
     capture::{CaptureBackend, CaptureFrame, capture_screen},
     color::{Rgb, format_template},
     config::{
-        ActivationAction, ClickAction, History, LoupeStyle, STANDARD_PICKER_MAX_ZOOM_LEVEL,
-        Settings,
+        ActivationAction, ClickAction, ColorNamePosition, History, LoupeStyle,
+        STANDARD_PICKER_MAX_ZOOM_LEVEL, Settings,
     },
     measurement::Point,
 };
@@ -179,7 +179,11 @@ impl PickerApp {
 
     fn draw_loupe(&self, ctx: &egui::Context, image_rect: Rect) {
         let color = self.selected_color();
-        let value = format_template(color, self.settings.selected_format());
+        let value = self
+            .settings
+            .picker
+            .show_copied_value
+            .then(|| format_template(color, self.settings.selected_format()));
         let name = self.settings.picker.show_color_name.then(|| color.name());
         let selected_position = point_position(&self.frame, self.point, image_rect);
         let centered = self.settings.picker.loupe_style == LoupeStyle::Centered;
@@ -204,8 +208,10 @@ impl PickerApp {
                     LoupePlacement::Tooltip
                 },
                 details: Some(LoupeDetails {
-                    value: &value,
+                    value: value.as_deref(),
                     name,
+                    name_above_value: self.settings.picker.color_name_position
+                        == ColorNamePosition::AboveCopiedValue,
                 }),
                 layer_id: "picker-loupe",
             },
@@ -224,8 +230,10 @@ impl eframe::App for PickerApp {
             self.texture.paint(ui.painter(), image_rect);
             self.handle_input(ctx, image_rect);
             let point_screen = point_position(&self.frame, self.point, image_rect);
-            ui.painter().circle_stroke(point_screen, 6.0, Stroke::new(1.5, Color32::WHITE));
-            ui.painter().circle_stroke(point_screen, 8.0, Stroke::new(1.0, Color32::BLACK));
+            ui.painter()
+                .circle_stroke(point_screen, 6.0, Stroke::new(1.5_f32, Color32::WHITE));
+            ui.painter()
+                .circle_stroke(point_screen, 8.0, Stroke::new(1.0_f32, Color32::BLACK));
             let source = match self.frame.backend { CaptureBackend::X11 => "direct X11 capture", CaptureBackend::Portal => "Wayland portal snapshot", CaptureBackend::File => "image preview" };
             let help = format!("Click / Enter to pick  •  arrows move 1 px  •  Shift+arrows move 10 px  •  wheel zooms  •  Esc closes  •  {}×{}  •  {source}", self.frame.width, self.frame.height);
             ui.painter().rect_filled(Rect::from_min_max(Pos2::new(available.left() + 10.0, available.bottom() - 36.0), Pos2::new(available.right() - 10.0, available.bottom() - 8.0)), 7.0, Color32::from_black_alpha(205));

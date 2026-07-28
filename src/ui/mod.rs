@@ -135,7 +135,7 @@ fn configure_style(ctx: &egui::Context) {
     style.visuals.widgets.hovered.corner_radius = CornerRadius::same(7);
     style.visuals.widgets.active.corner_radius = CornerRadius::same(7);
     style.visuals.selection.bg_fill = Color32::from_rgb(0, 110, 210);
-    style.visuals.selection.stroke = Stroke::new(1.0, Color32::WHITE);
+    style.visuals.selection.stroke = Stroke::new(1.0_f32, Color32::WHITE);
     ctx.set_style(style);
 }
 
@@ -485,7 +485,7 @@ fn rgba_hex_input(ui: &mut egui::Ui, value: &mut String) -> egui::Response {
 fn panel_frame() -> egui::Frame {
     egui::Frame::new()
         .fill(Color32::from_black_alpha(22))
-        .stroke(Stroke::new(1.0, Color32::from_white_alpha(24)))
+        .stroke(Stroke::new(1.0_f32, Color32::from_white_alpha(24)))
         .corner_radius(CornerRadius::same(12))
         .inner_margin(16)
 }

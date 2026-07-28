@@ -3,9 +3,9 @@ use crate::{
     APP_NAME, VERSION,
     color::{FORMAT_NAMES, Rgb, format_template},
     config::{
-        ActivationAction, ClickAction, EditorView, EditorViewSwitchPosition, History, LoupeStyle,
-        MAGNIFIER_GRID_SIZES, MAX_MAGNIFIER_ZOOM_LEVEL, MAX_PICKER_MAX_ZOOM_LEVEL, RulerMode,
-        Settings, Unit,
+        ActivationAction, ClickAction, ColorNamePosition, EditorView, EditorViewSwitchPosition,
+        History, LoupeStyle, MAGNIFIER_GRID_SIZES, MAX_MAGNIFIER_ZOOM_LEVEL,
+        MAX_PICKER_MAX_ZOOM_LEVEL, RulerMode, Settings, Unit,
     },
 };
 use eframe::egui::{self, RichText};
@@ -366,6 +366,21 @@ impl HubApp {
                         }
                     });
                 ui.end_row();
+                ui.label("Color name position");
+                egui::ComboBox::from_id_salt("color_name_position")
+                    .selected_text(self.settings.picker.color_name_position.label())
+                    .show_ui(ui, |ui| {
+                        for position in ColorNamePosition::ALL {
+                            self.dirty |= ui
+                                .selectable_value(
+                                    &mut self.settings.picker.color_name_position,
+                                    position,
+                                    position.label(),
+                                )
+                                .changed();
+                        }
+                    });
+                ui.end_row();
                 ui.label("Primary click");
                 click_combo(
                     ui,
@@ -428,8 +443,16 @@ impl HubApp {
         self.dirty |= ui
             .checkbox(
                 &mut self.settings.picker.show_color_name,
-                "Show the nearest color name",
+                "Show the nearest color name in the picker loupe",
             )
+            .on_hover_text("Uses the same color name shown in the compact editor.")
+            .changed();
+        self.dirty |= ui
+            .checkbox(
+                &mut self.settings.picker.show_copied_value,
+                "Show the copied value in the picker loupe",
+            )
+            .on_hover_text("This only controls the display; picking still copies the value.")
             .changed();
         self.dirty |= ui
             .checkbox(

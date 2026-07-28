@@ -331,7 +331,7 @@ impl EditorApp {
             .fill(color32(self.selected))
             .corner_radius(12)
             .inner_margin(18)
-            .stroke(Stroke::new(1.0, Color32::from_white_alpha(45)));
+            .stroke(Stroke::new(1.0_f32, Color32::from_white_alpha(45)));
         card.show(ui, |ui| {
             ui.set_min_height(105.0);
             ui.vertical_centered(|ui| {
@@ -596,7 +596,7 @@ impl EditorApp {
                 let card = egui::Frame::new()
                     .fill(color32(self.selected))
                     .corner_radius(12)
-                    .stroke(Stroke::new(1.0, Color32::from_white_alpha(45)));
+                    .stroke(Stroke::new(1.0_f32, Color32::from_white_alpha(45)));
                 card.show(ui, |ui| {
                     ui.set_min_size(Vec2::new(side, side));
                 });

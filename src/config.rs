@@ -157,7 +157,9 @@ pub struct PickerSettings {
     pub middle_click: ClickAction,
     pub secondary_click: ClickAction,
     pub change_cursor: bool,
+    pub show_copied_value: bool,
     pub show_color_name: bool,
+    pub color_name_position: ColorNamePosition,
     pub use_standard_zoom_range: bool,
     pub maximum_zoom_level: u8,
     pub history_limit: usize,
@@ -181,7 +183,9 @@ impl Default for PickerSettings {
             middle_click: ClickAction::PickAndClose,
             secondary_click: ClickAction::Close,
             change_cursor: false,
+            show_copied_value: true,
             show_color_name: false,
+            color_name_position: ColorNamePosition::BelowCopiedValue,
             use_standard_zoom_range: true,
             maximum_zoom_level: STANDARD_PICKER_MAX_ZOOM_LEVEL,
             history_limit: 20,
@@ -197,6 +201,25 @@ impl Default for PickerSettings {
                 })
                 .collect(),
             interactive_portal: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ColorNamePosition {
+    AboveCopiedValue,
+    #[default]
+    BelowCopiedValue,
+}
+
+impl ColorNamePosition {
+    pub const ALL: [Self; 2] = [Self::AboveCopiedValue, Self::BelowCopiedValue];
+
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::AboveCopiedValue => "Above copied value",
+            Self::BelowCopiedValue => "Below copied value",
         }
     }
 }
@@ -467,6 +490,12 @@ mod tests {
             settings.picker.editor_view_switch_position,
             EditorViewSwitchPosition::Centered
         );
+        assert!(settings.picker.show_copied_value);
+        assert!(!settings.picker.show_color_name);
+        assert_eq!(
+            settings.picker.color_name_position,
+            ColorNamePosition::BelowCopiedValue
+        );
         assert!(settings.picker.single_editor_instance);
     }
 
@@ -485,6 +514,12 @@ mod tests {
         assert_eq!(
             settings.picker.editor_view_switch_position,
             EditorViewSwitchPosition::Centered
+        );
+        assert!(settings.picker.show_copied_value);
+        assert!(!settings.picker.show_color_name);
+        assert_eq!(
+            settings.picker.color_name_position,
+            ColorNamePosition::BelowCopiedValue
         );
         assert!(settings.picker.single_editor_instance);
         assert_eq!(settings.magnifier.shortcut, "Super+Shift+Z");
@@ -539,6 +574,25 @@ mod tests {
 
         let json = serde_json::to_value(settings).unwrap();
         assert_eq!(json["picker"]["loupe_style"], "centered");
+    }
+
+    #[test]
+    fn picker_loupe_details_serialize_stably() {
+        let settings: Settings = serde_json::from_str(
+            r#"{"picker":{"show_copied_value":false,"show_color_name":true,"color_name_position":"above_copied_value"}}"#,
+        )
+        .unwrap();
+        assert!(!settings.picker.show_copied_value);
+        assert!(settings.picker.show_color_name);
+        assert_eq!(
+            settings.picker.color_name_position,
+            ColorNamePosition::AboveCopiedValue
+        );
+
+        let json = serde_json::to_value(settings).unwrap();
+        assert_eq!(json["picker"]["show_copied_value"], false);
+        assert_eq!(json["picker"]["show_color_name"], true);
+        assert_eq!(json["picker"]["color_name_position"], "above_copied_value");
     }
 
     #[test]

@@ -9,8 +9,9 @@ pub(super) enum LoupePlacement {
 }
 
 pub(super) struct LoupeDetails<'a> {
-    pub value: &'a str,
+    pub value: Option<&'a str>,
     pub name: Option<&'a str>,
+    pub name_above_value: bool,
 }
 
 pub(super) struct Loupe<'a> {
@@ -23,6 +24,43 @@ pub(super) struct Loupe<'a> {
     pub placement: LoupePlacement,
     pub details: Option<LoupeDetails<'a>>,
     pub layer_id: &'static str,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct DetailLineLayout {
+    value_offset: Option<f32>,
+    name_offset: Option<f32>,
+    height: f32,
+}
+
+fn detail_line_layout(
+    value_visible: bool,
+    name_visible: bool,
+    name_above_value: bool,
+) -> DetailLineLayout {
+    match (value_visible, name_visible, name_above_value) {
+        (false, false, _) => DetailLineLayout::default(),
+        (true, false, _) => DetailLineLayout {
+            value_offset: Some(0.0),
+            name_offset: None,
+            height: 18.0,
+        },
+        (false, true, _) => DetailLineLayout {
+            value_offset: None,
+            name_offset: Some(0.0),
+            height: 18.0,
+        },
+        (true, true, true) => DetailLineLayout {
+            value_offset: Some(20.0),
+            name_offset: Some(0.0),
+            height: 38.0,
+        },
+        (true, true, false) => DetailLineLayout {
+            value_offset: Some(0.0),
+            name_offset: Some(20.0),
+            height: 38.0,
+        },
+    }
 }
 
 pub(super) fn capture_image_rect(frame: &CaptureFrame, available: Rect) -> Rect {
@@ -102,22 +140,36 @@ pub(super) fn draw_loupe(ctx: &egui::Context, loupe: Loupe<'_>) {
         .unwrap_or_default();
     let value_font = FontId::monospace(15.0);
     let name_font = FontId::proportional(13.0);
-    let (value_width, name_width, footer_height) =
-        loupe.details.as_ref().map_or((0.0, 0.0, 0.0), |details| {
-            let value_width = painter
-                .layout_no_wrap(details.value.to_owned(), value_font.clone(), Color32::WHITE)
-                .size()
-                .x;
-            let name_width = details.name.map_or(0.0, |name| {
-                painter
-                    .layout_no_wrap(name.to_owned(), name_font.clone(), Color32::LIGHT_GRAY)
-                    .size()
-                    .x
+    let (value_width, name_width, line_layout, footer_height) =
+        loupe
+            .details
+            .as_ref()
+            .map_or((0.0, 0.0, DetailLineLayout::default(), 0.0), |details| {
+                let value_width = details.value.map_or(0.0, |value| {
+                    painter
+                        .layout_no_wrap(value.to_owned(), value_font.clone(), Color32::WHITE)
+                        .size()
+                        .x
+                });
+                let name_width = details.name.map_or(0.0, |name| {
+                    painter
+                        .layout_no_wrap(name.to_owned(), name_font.clone(), Color32::LIGHT_GRAY)
+                        .size()
+                        .x
+                });
+                let line_layout = detail_line_layout(
+                    details.value.is_some(),
+                    details.name.is_some(),
+                    details.name_above_value,
+                );
+                let text_height = if line_layout.height > 0.0 {
+                    7.0 + line_layout.height
+                } else {
+                    0.0
+                };
+                let footer_height = 10.0 + 18.0 + text_height + 4.0;
+                (value_width, name_width, line_layout, footer_height)
             });
-            let footer_height =
-                10.0 + 18.0 + 7.0 + 18.0 + if details.name.is_some() { 20.0 } else { 0.0 } + 4.0;
-            (value_width, name_width, footer_height)
-        });
     let available_width = (loupe.image_rect.width() - 30.0).max(grid_size);
     let content_width = grid_size
         .max(value_width + 12.0)
@@ -140,7 +192,7 @@ pub(super) fn draw_loupe(ctx: &egui::Context, loupe: Loupe<'_>) {
     painter.rect_stroke(
         box_rect,
         9.0,
-        Stroke::new(1.0, Color32::from_white_alpha(80)),
+        Stroke::new(1.0_f32, Color32::from_white_alpha(80)),
         StrokeKind::Outside,
     );
 
@@ -171,13 +223,13 @@ pub(super) fn draw_loupe(ctx: &egui::Context, loupe: Loupe<'_>) {
     painter.rect_stroke(
         center.expand(1.0),
         0.0,
-        Stroke::new(2.0, Color32::WHITE),
+        Stroke::new(2.0_f32, Color32::WHITE),
         StrokeKind::Outside,
     );
     painter.rect_stroke(
         center.expand(3.0),
         0.0,
-        Stroke::new(1.0, Color32::BLACK),
+        Stroke::new(1.0_f32, Color32::BLACK),
         StrokeKind::Outside,
     );
 
@@ -192,26 +244,28 @@ pub(super) fn draw_loupe(ctx: &egui::Context, loupe: Loupe<'_>) {
     painter.rect_stroke(
         swatch,
         5.0,
-        Stroke::new(1.0, Color32::from_black_alpha(130)),
+        Stroke::new(1.0_f32, Color32::from_black_alpha(130)),
         StrokeKind::Inside,
     );
     painter.rect_stroke(
         swatch,
         5.0,
-        Stroke::new(1.0, Color32::from_white_alpha(105)),
+        Stroke::new(1.0_f32, Color32::from_white_alpha(105)),
         StrokeKind::Outside,
     );
-    let value_top = swatch.bottom() + 7.0;
-    painter.text(
-        Pos2::new(origin.x + content_width * 0.5, value_top),
-        egui::Align2::CENTER_TOP,
-        details.value,
-        value_font,
-        Color32::WHITE,
-    );
-    if let Some(name) = details.name {
+    let text_top = swatch.bottom() + 7.0;
+    if let (Some(value), Some(offset)) = (details.value, line_layout.value_offset) {
         painter.text(
-            Pos2::new(origin.x + content_width * 0.5, value_top + 20.0),
+            Pos2::new(origin.x + content_width * 0.5, text_top + offset),
+            egui::Align2::CENTER_TOP,
+            value,
+            value_font,
+            Color32::WHITE,
+        );
+    }
+    if let (Some(name), Some(offset)) = (details.name, line_layout.name_offset) {
+        painter.text(
+            Pos2::new(origin.x + content_width * 0.5, text_top + offset),
             egui::Align2::CENTER_TOP,
             name,
             name_font,
@@ -251,5 +305,49 @@ mod tests {
             LoupePlacement::Tooltip,
         );
         assert_eq!(origin, Pos2::new(336.0, 166.0));
+    }
+
+    #[test]
+    fn detail_lines_can_be_independently_hidden() {
+        assert_eq!(
+            detail_line_layout(false, false, false),
+            DetailLineLayout::default()
+        );
+        assert_eq!(
+            detail_line_layout(true, false, false),
+            DetailLineLayout {
+                value_offset: Some(0.0),
+                name_offset: None,
+                height: 18.0,
+            }
+        );
+        assert_eq!(
+            detail_line_layout(false, true, false),
+            DetailLineLayout {
+                value_offset: None,
+                name_offset: Some(0.0),
+                height: 18.0,
+            }
+        );
+    }
+
+    #[test]
+    fn color_name_can_be_placed_above_or_below_the_value() {
+        assert_eq!(
+            detail_line_layout(true, true, true),
+            DetailLineLayout {
+                value_offset: Some(20.0),
+                name_offset: Some(0.0),
+                height: 38.0,
+            }
+        );
+        assert_eq!(
+            detail_line_layout(true, true, false),
+            DetailLineLayout {
+                value_offset: Some(0.0),
+                name_offset: Some(20.0),
+                height: 38.0,
+            }
+        );
     }
 }

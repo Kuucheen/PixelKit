@@ -429,7 +429,7 @@ impl RulerApp {
     fn draw_record(&self, painter: &egui::Painter, image: Rect, record: MeasurementRecord) {
         let color =
             parse_rgba(&self.settings.ruler.cross_color).unwrap_or(Color32::from_rgb(255, 69, 0));
-        let stroke = Stroke::new(1.5, color);
+        let stroke = Stroke::new(1.5_f32, color);
         let map_x = |x: f32| image.left() + x / self.frame.width as f32 * image.width();
         let map_y = |y: f32| image.top() + y / self.frame.height as f32 * image.height();
         let left = map_x(record.rect.left as f32);
@@ -515,7 +515,7 @@ impl RulerApp {
         painter.rect_stroke(
             label,
             5.0,
-            Stroke::new(1.0, Color32::from_white_alpha(55)),
+            Stroke::new(1.0_f32, Color32::from_white_alpha(55)),
             StrokeKind::Inside,
         );
         painter.text(
