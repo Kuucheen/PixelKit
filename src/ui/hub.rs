@@ -282,11 +282,11 @@ impl HubApp {
 
         if ui.available_width() >= 680.0 {
             ui.columns(2, |columns| {
-                self.picker_behavior_panel(&mut columns[0]);
-                self.picker_loupe_panel(&mut columns[1]);
+                let loupe = columns[1].scope(|ui| self.picker_loupe_panel(ui));
+                self.picker_behavior_panel(&mut columns[0], Some(loupe.response.rect.height()));
             });
         } else {
-            self.picker_behavior_panel(ui);
+            self.picker_behavior_panel(ui, None);
             ui.add_space(12.0);
             self.picker_loupe_panel(ui);
         }
@@ -329,9 +329,14 @@ impl HubApp {
         });
     }
 
-    fn picker_behavior_panel(&mut self, ui: &mut egui::Ui) {
-        panel_frame().show(ui, |ui| {
+    fn picker_behavior_panel(&mut self, ui: &mut egui::Ui, min_outer_height: Option<f32>) {
+        let frame = panel_frame();
+        let vertical_margin = frame.total_margin().sum().y;
+        frame.show(ui, |ui| {
             ui.set_min_width(ui.available_width());
+            if let Some(min_outer_height) = min_outer_height {
+                ui.set_min_height((min_outer_height - vertical_margin).max(0.0));
+            }
             ui.heading("Picking");
             ui.label(RichText::new("Choose what starts, closes, or follows a pick.").weak());
             ui.add_space(8.0);
