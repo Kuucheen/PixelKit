@@ -1,4 +1,7 @@
-use super::{configure_style, native_options, panel_frame, rgba_hex_input, spawn_action};
+use super::{
+    SettingControlText, centered_setting_label, configure_style, native_options, panel_frame,
+    rgba_hex_input, spawn_action,
+};
 use crate::{
     APP_NAME, VERSION,
     color::{FORMAT_NAMES, Rgb, format_template},
@@ -19,6 +22,7 @@ enum Page {
     Home,
     Picker,
     Magnifier,
+    Scanner,
     Ruler,
     Shortcuts,
     About,
@@ -90,6 +94,7 @@ impl HubApp {
             (Page::Home, "Overview"),
             (Page::Picker, "Color Picker"),
             (Page::Magnifier, "Magnifier"),
+            (Page::Scanner, "QR & Barcode Scanner"),
             (Page::Ruler, "Screen Ruler"),
             (Page::Shortcuts, "Background shortcuts"),
             (Page::About, "About & compatibility"),
@@ -105,9 +110,9 @@ impl HubApp {
 
     fn home(&mut self, ui: &mut egui::Ui) {
         ui.heading("Overview");
-        ui.label("Pick exact pixels, magnify details, edit and export colors, or measure UI geometry and same-color spacing.");
+        ui.label("Pick exact pixels, magnify details, scan on-screen codes, edit and export colors, or measure UI geometry.");
         ui.add_space(12.0);
-        ui.columns(3, |columns| {
+        ui.columns(2, |columns| {
             panel_frame().show(&mut columns[0], |ui| {
                 ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
                     ui.heading("Color Picker");
@@ -149,7 +154,26 @@ impl HubApp {
                     }
                 });
             });
-            panel_frame().show(&mut columns[2], |ui| {
+        });
+        ui.add_space(12.0);
+        ui.columns(2, |columns| {
+            panel_frame().show(&mut columns[0], |ui| {
+                ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                    ui.heading("QR & Barcode Scanner");
+                    ui.label("Find multiple QR codes and barcodes in one full-resolution capture, then inspect, copy, or open their contents.");
+                    ui.add_space(12.0);
+                    if ui
+                        .add_sized(
+                            [ui.available_width(), ui.spacing().interact_size.y],
+                            egui::Button::new("Scan the screen"),
+                        )
+                        .clicked()
+                    {
+                        self.launch("code-scanner");
+                    }
+                });
+            });
+            panel_frame().show(&mut columns[1], |ui| {
                 ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
                     ui.heading("Screen Ruler");
                     ui.label("Bounds, cross-spacing, horizontal, and vertical modes with tolerance controls and physical units.");
@@ -327,6 +351,56 @@ impl HubApp {
                 }
             }
         });
+    }
+
+    fn scanner(&mut self, ui: &mut egui::Ui) {
+        ui.heading("QR & Barcode Scanner");
+        ui.label(
+            "Configure the capture used to find multiple codes across the screen automatically.",
+        );
+        ui.add_space(12.0);
+        panel_frame().show(ui, |ui| {
+            ui.set_min_width(ui.available_width());
+            ui.heading("Capture and results");
+            ui.label(
+                RichText::new(
+                    "Detection runs locally against the original full-resolution pixels. Clicking a highlight shows its decoded content; HTTP(S) links can be opened explicitly.",
+                )
+                .weak(),
+            );
+            ui.add_space(10.0);
+            egui::Grid::new("scanner_results")
+                .num_columns(2)
+                .spacing([18.0, 12.0])
+                .show(ui, |ui| {
+                    ui.label("Detection highlight");
+                    self.dirty |= rgba_hex_input(
+                        ui,
+                        &mut self.settings.scanner.highlight_color,
+                    )
+                    .on_hover_text(
+                        "Choose the color and opacity of detected outlines and number badges.",
+                    )
+                    .changed();
+                    ui.end_row();
+                });
+            ui.add_space(6.0);
+            self.dirty |= ui
+                .checkbox(
+                    &mut self.settings.scanner.interactive_portal,
+                    "Ask which screen or area to capture on Wayland",
+                )
+                .on_hover_text("Lets the Wayland portal show its target selector.")
+                .changed();
+            ui.add_space(8.0);
+            ui.label(
+                "Recognizes QR and Micro QR, Data Matrix, Aztec, PDF417, Code 39/93/128, EAN, UPC, ITF, Codabar, GS1 DataBar, Telepen, and MaxiCode.",
+            );
+        });
+        ui.add_space(18.0);
+        if ui.button("Launch QR & Barcode Scanner").clicked() {
+            self.launch("code-scanner");
+        }
     }
 
     fn picker_behavior_panel(&mut self, ui: &mut egui::Ui, min_outer_height: Option<f32>) {
@@ -707,6 +781,11 @@ impl HubApp {
                     .text_edit_singleline(&mut self.settings.magnifier.shortcut)
                     .changed();
                 ui.end_row();
+                ui.label("QR & Barcode Scanner");
+                self.dirty |= ui
+                    .text_edit_singleline(&mut self.settings.scanner.shortcut)
+                    .changed();
+                ui.end_row();
                 ui.label("Screen Ruler");
                 self.dirty |= ui
                     .text_edit_singleline(&mut self.settings.ruler.shortcut)
@@ -746,7 +825,7 @@ impl HubApp {
 
     fn about(&mut self, ui: &mut egui::Ui) {
         ui.heading("About & compatibility");
-        ui.label(format!("{APP_NAME} {VERSION} is an independent MIT-licensed Linux implementation inspired by PowerToys Color Picker and Screen Ruler."));
+        ui.label(format!("{APP_NAME} {VERSION} is an independent Linux precision-tool suite inspired by PowerToys Color Picker and Screen Ruler."));
         ui.add_space(14.0);
         panel_frame().show(ui, |ui| {
             ui.strong("X11");
@@ -756,7 +835,7 @@ impl HubApp {
             ui.label("Uses screenshot and global-shortcut portals. The security model may add a compositor permission/target dialog; PixelKit never bypasses it.");
             ui.add_space(8.0);
             ui.strong("Privacy");
-            ui.label("Screenshots are processed locally in memory. PixelKit has no telemetry or network code.");
+            ui.label("Screenshots and decoded codes are processed locally in memory. PixelKit has no telemetry; a decoded HTTP(S) link is only handed to the desktop after you choose Open link.");
         });
     }
 }
@@ -798,12 +877,6 @@ fn centered_setting_row<R>(
     ui.horizontal(add_contents)
 }
 
-#[derive(Clone, Copy)]
-enum SettingControlText {
-    Centered,
-    ComboBox,
-}
-
 fn dependent_setting_row(
     ui: &mut egui::Ui,
     label: &str,
@@ -832,40 +905,6 @@ fn dependent_setting_row(
     row
 }
 
-fn centered_setting_label(
-    ui: &mut egui::Ui,
-    text: &str,
-    control_text: SettingControlText,
-) -> egui::Response {
-    let font = egui::TextStyle::Body.resolve(ui.style());
-    let color = ui.visuals().text_color();
-    let galley = ui.painter().layout_no_wrap(text.to_owned(), font, color);
-    let spacing = ui.spacing();
-    let icon_width = spacing.icon_width;
-    let button_padding_y = spacing.button_padding.y;
-    let interact_height = spacing.interact_size.y;
-    let control_height =
-        (galley.size().y.max(icon_width) + button_padding_y * 2.0).max(interact_height);
-    let size = egui::vec2(galley.size().x.ceil(), control_height);
-    let (rect, response) = ui.allocate_exact_size(size, egui::Sense::hover());
-    response
-        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), text));
-    if ui.is_rect_visible(rect) {
-        let optical_offset = match control_text {
-            SettingControlText::Centered => 0.0,
-            // ComboBox lays out its text in an inset child UI, which places
-            // its baseline lower than controls that center their text.
-            SettingControlText::ComboBox => (button_padding_y * 0.75).round(),
-        };
-        let position = egui::pos2(
-            rect.left(),
-            rect.center().y - galley.size().y * 0.5 + optical_offset,
-        );
-        ui.painter().galley(position, galley, color);
-    }
-    response
-}
-
 impl eframe::App for HubApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::SidePanel::left("navigation")
@@ -887,6 +926,7 @@ impl eframe::App for HubApp {
                     Page::Home => self.home(ui),
                     Page::Picker => self.picker(ui),
                     Page::Magnifier => self.magnifier(ui),
+                    Page::Scanner => self.scanner(ui),
                     Page::Ruler => self.ruler(ui),
                     Page::Shortcuts => self.shortcuts(ui),
                     Page::About => self.about(ui),

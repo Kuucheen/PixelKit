@@ -1,6 +1,7 @@
-//! Shared PixelKit color, capture, configuration, and measurement logic.
+//! Shared PixelKit capture, code, color, configuration, and measurement logic.
 
 pub mod capture;
+pub mod code_detection;
 pub mod color;
 pub mod config;
 pub mod daemon;

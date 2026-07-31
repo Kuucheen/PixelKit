@@ -1,8 +1,8 @@
 Name:           pixelkit
 Version:        0.3.0
 Release:        1%{?dist}
-Summary:        Native Linux color picker, magnifier, and screen ruler
-License:        MIT
+Summary:        Native Linux color picker, code scanner, and screen ruler
+License:        MIT AND Apache-2.0
 URL:            https://github.com/Kuucheen/PixelKit
 Source0:        %{url}/releases/download/v%{version}/%{name}-%{version}-vendor.tar.xz
 
@@ -24,7 +24,8 @@ Recommends:     xdg-desktop-portal-gtk
 
 %description
 PixelKit provides a magnified system-wide color picker, configurable magnifier,
-color history and format editor, and a screen ruler with bounds and color-edge measurement modes.
+multi-code QR and barcode scanner, color history and format editor, and a
+screen ruler with bounds and color-edge measurement modes.
 It uses direct capture on X11 and freedesktop portals on Wayland.
 
 %prep
@@ -42,7 +43,7 @@ cargo test --release --all-targets --frozen --offline
 make install DESTDIR=%{buildroot} PREFIX=%{_prefix} CARGO="cargo --offline"
 
 %files
-%license LICENSE
+%license LICENSE LICENSES/Apache-2.0.txt
 %doc README.md NOTICE
 %{_bindir}/pixelkit
 %{_datadir}/applications/io.github.Kuucheen.PixelKit.desktop

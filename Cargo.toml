@@ -3,11 +3,11 @@ name = "pixelkit"
 version = "0.3.0"
 edition = "2024"
 rust-version = "1.88"
-description = "A lightweight Linux color picker, magnifier, and screen ruler inspired by Microsoft PowerToys"
+description = "A lightweight Linux color picker, code scanner, magnifier, and screen ruler"
 license = "MIT"
 repository = "https://github.com/Kuucheen/PixelKit"
 readme = "README.md"
-keywords = ["color-picker", "screen-ruler", "linux", "wayland", "x11"]
+keywords = ["color-picker", "barcode-scanner", "screen-ruler", "wayland", "x11"]
 categories = ["gui", "multimedia::images"]
 
 [dependencies]
@@ -15,18 +15,24 @@ anyhow = "1.0"
 arboard = { version = "3.6", default-features = false, features = ["wayland-data-control"] }
 # `documents` also activates ashpd's serde-repr dependency, which its 0.13
 # screenshot feature uses for the portal target flags.
-ashpd = { version = "0.13", default-features = false, features = ["tokio", "documents", "global_shortcuts", "screenshot"] }
+ashpd = { version = "0.13", default-features = false, features = ["tokio", "documents", "global_shortcuts", "open_uri", "screenshot"] }
 directories = "6.0"
 eframe = { version = "=0.31.1", default-features = false, features = ["accesskit", "default_fonts", "glow", "wayland", "x11"] }
 futures-util = "0.3"
 global-hotkey = "0.8"
 image = { version = "0.25", default-features = false, features = ["png"] }
 percent-encoding = "2.3"
+rxing = { version = "0.9.2", default-features = false, features = ["decoders", "encoding_rs", "full_barcode_format_support", "multi_barcode_readers"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
 tokio = { version = "1.48", features = ["macros", "rt-multi-thread", "signal", "time"] }
 x11rb = { version = "0.13", features = ["randr"] }
+
+[dev-dependencies]
+# Production only links the decoder. Tests enable writers so they can generate
+# deterministic QR/barcode fixtures in memory.
+rxing = { version = "0.9.2", default-features = false, features = ["encoders"] }
 
 [profile.release]
 codegen-units = 1
@@ -39,7 +45,7 @@ strip = "symbols"
 maintainer = "PixelKit contributors <70746714+Kuucheen@users.noreply.github.com>"
 copyright = "2026, PixelKit contributors"
 license-file = ["LICENSE", "4"]
-extended-description = "Native Linux color picker, configurable magnifier, color editor, and screen ruler workflows."
+extended-description = "Native Linux color picker, QR and barcode scanner, configurable magnifier, color editor, and screen ruler workflows."
 depends = "$auto, libc6, libgcc-s1, libgl1, libx11-6, libxcb1, libxkbcommon0, libwayland-client0"
 recommends = "xdg-desktop-portal, xdg-desktop-portal-gtk | xdg-desktop-portal-kde | xdg-desktop-portal-gnome"
 section = "graphics"
@@ -54,4 +60,5 @@ assets = [
   ["packaging/linux/pixelkit.service", "usr/lib/systemd/user/", "644"],
   ["docs/pixelkit.1", "usr/share/man/man1/", "644"],
   ["NOTICE", "usr/share/doc/pixelkit/NOTICE", "644"],
+  ["LICENSES/Apache-2.0.txt", "usr/share/licenses/pixelkit/Apache-2.0.txt", "644"],
 ]

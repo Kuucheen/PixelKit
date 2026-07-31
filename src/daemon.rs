@@ -11,6 +11,7 @@ use std::{
 const PICKER_ID: &str = "color-picker";
 const MAGNIFIER_ID: &str = "magnifier";
 const RULER_ID: &str = "screen-ruler";
+const SCANNER_ID: &str = "code-scanner";
 
 type PortalShortcut = (String, String, String);
 
@@ -77,19 +78,27 @@ fn run_x11(settings: Settings) -> Result<()> {
         .shortcut
         .parse()
         .context("invalid Magnifier shortcut")?;
-    if picker.id() == ruler.id() || picker.id() == magnifier.id() || magnifier.id() == ruler.id() {
+    let scanner: HotKey = settings
+        .scanner
+        .shortcut
+        .parse()
+        .context("invalid QR & Barcode Scanner shortcut")?;
+    if !shortcut_ids_are_unique(&[picker.id(), magnifier.id(), ruler.id(), scanner.id()]) {
         return Err(anyhow!(
-            "Color Picker, Magnifier, and Screen Ruler shortcuts must all differ"
+            "Color Picker, Magnifier, QR & Barcode Scanner, and Screen Ruler shortcuts must all differ"
         ));
     }
     let manager =
         GlobalHotKeyManager::new().context("failed to initialize X11 global shortcuts")?;
     manager
-        .register_all(&[picker, magnifier, ruler])
+        .register_all(&[picker, magnifier, scanner, ruler])
         .context("failed to register an X11 shortcut; another application may already own it")?;
     eprintln!(
-        "PixelKit daemon: X11 shortcuts registered ({}, {}, and {})",
-        settings.picker.shortcut, settings.magnifier.shortcut, settings.ruler.shortcut
+        "PixelKit daemon: X11 shortcuts registered ({}, {}, {}, and {})",
+        settings.picker.shortcut,
+        settings.magnifier.shortcut,
+        settings.scanner.shortcut,
+        settings.ruler.shortcut
     );
     while let Ok(event) = GlobalHotKeyEvent::receiver().recv() {
         if event.state == HotKeyState::Pressed {
@@ -97,6 +106,8 @@ fn run_x11(settings: Settings) -> Result<()> {
                 spawn_action(PICKER_ID);
             } else if event.id == magnifier.id() {
                 spawn_action(MAGNIFIER_ID);
+            } else if event.id == scanner.id() {
+                spawn_action(SCANNER_ID);
             } else if event.id == ruler.id() {
                 spawn_action(RULER_ID);
             }
@@ -119,6 +130,7 @@ async fn run_portal(settings: Settings) -> Result<()> {
         match event.shortcut_id() {
             PICKER_ID => spawn_action(PICKER_ID),
             MAGNIFIER_ID => spawn_action(MAGNIFIER_ID),
+            SCANNER_ID => spawn_action(SCANNER_ID),
             RULER_ID => spawn_action(RULER_ID),
             _ => {}
         }
@@ -174,12 +186,15 @@ async fn bind_portal_shortcuts(
         .await?;
     let picker_trigger = portal_trigger(&settings.picker.shortcut)?;
     let magnifier_trigger = portal_trigger(&settings.magnifier.shortcut)?;
+    let scanner_trigger = portal_trigger(&settings.scanner.shortcut)?;
     let ruler_trigger = portal_trigger(&settings.ruler.shortcut)?;
     let shortcuts = [
         NewShortcut::new(PICKER_ID, "Open PixelKit Color Picker")
             .preferred_trigger(Some(picker_trigger.as_str())),
         NewShortcut::new(MAGNIFIER_ID, "Open PixelKit Magnifier")
             .preferred_trigger(Some(magnifier_trigger.as_str())),
+        NewShortcut::new(SCANNER_ID, "Open PixelKit QR & Barcode Scanner")
+            .preferred_trigger(Some(scanner_trigger.as_str())),
         NewShortcut::new(RULER_ID, "Open PixelKit Screen Ruler")
             .preferred_trigger(Some(ruler_trigger.as_str())),
     ];
@@ -204,6 +219,12 @@ async fn bind_portal_shortcuts(
         })
         .collect();
     Ok((portal, session, shortcuts))
+}
+
+fn shortcut_ids_are_unique(ids: &[u32]) -> bool {
+    ids.iter()
+        .enumerate()
+        .all(|(index, id)| !ids[index + 1..].contains(id))
 }
 
 fn log_portal_shortcuts(shortcuts: &[PortalShortcut]) {
@@ -334,6 +355,12 @@ mod tests {
             "CTRL+ALT+Return"
         );
         assert!(portal_trigger("Hyper+C").is_err());
+    }
+
+    #[test]
+    fn every_tool_requires_a_distinct_shortcut() {
+        assert!(shortcut_ids_are_unique(&[1, 2, 3, 4]));
+        assert!(!shortcut_ids_are_unique(&[1, 2, 1, 4]));
     }
 
     #[test]

@@ -8,3 +8,11 @@ https://github.com/microsoft/PowerToys
 PowerToys is Copyright (c) Microsoft Corporation. PixelKit is not affiliated
 with or endorsed by Microsoft. Microsoft, Windows, and PowerToys are trademarks
 of the Microsoft group of companies.
+
+QR code and barcode detection uses rxing, a pure-Rust port of ZXing:
+https://github.com/rxing-core/rxing
+
+rxing, the original ZXing work, and the incorporated zxing-cpp enhancements are
+licensed under the Apache License, Version 2.0. Copyright remains with their
+respective authors and contributors. A copy of the license is provided in
+LICENSES/Apache-2.0.txt.

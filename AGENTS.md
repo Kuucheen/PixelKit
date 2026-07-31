@@ -10,8 +10,8 @@ applies only inside that tree.
 PixelKit is a lightweight, native Linux implementation of the PowerToys Color
 Picker and Screen Ruler workflows. Preserve these properties:
 
-- One Rust binary with short-lived picker/magnifier/ruler/editor processes and
-  a small event-blocked shortcut daemon.
+- One Rust binary with short-lived picker/magnifier/scanner/ruler/editor
+  processes and a small event-blocked shortcut daemon.
 - No privileged helper, `/dev/input`, uinput, key logger, telemetry, or runtime
   network service.
 - Direct X11 integration where the protocol permits it; compositor-controlled
@@ -29,6 +29,8 @@ renderer. The upstream repository is `git@github.com:Kuucheen/PixelKit.git`.
 
 - `src/capture.rs`: PNG loading, direct X11 root capture, Wayland Screenshot
   portal capture, RGBA normalization, and DPI.
+- `src/code_detection.rs`: full-resolution luminance conversion, multi-format
+  QR/barcode detection, de-duplication, and source-image result geometry.
 - `src/color.rs`: color conversions, names, PowerToys-compatible format tokens.
 - `src/measurement.rs`: inclusive measurement rectangles, physical units, and
   same-color edge scans.
@@ -39,6 +41,8 @@ renderer. The upstream repository is `git@github.com:Kuucheen/PixelKit.git`.
 - `src/ui/loupe.rs`: shared picker/magnifier grid, tooltip, and coordinate logic.
 - `src/ui/picker.rs`: full-screen picker and offset color loupe.
 - `src/ui/magnifier.rs`: standalone configurable magnifier overlay.
+- `src/ui/scanner.rs`: async multi-code scanner, clickable result overlay,
+  decoded-content details, safe link opening, and async recapture.
 - `src/ui/ruler.rs`: full-screen ruler, measurements, and async recapture.
 - `src/ui/editor.rs`: saved-color editor/history/export UI.
 - `src/ui/hub.rs`: settings and launcher window.
@@ -80,6 +84,9 @@ renderer. The upstream repository is `git@github.com:Kuucheen/PixelKit.git`.
   Preserve the transparent frame so PixelKit does not photograph itself.
 - Wayland ruler content is a snapshot. Manual Recapture / `R` is intentional;
   continuous capture is limited to X11.
+- Scanner detection runs off the egui thread. Scanner Recapture follows the
+  ruler's transparent-frame and timeout pattern, then automatically scans the
+  fresh full-resolution frame.
 
 ### Input and UI behavior
 
@@ -104,6 +111,12 @@ renderer. The upstream repository is `git@github.com:Kuucheen/PixelKit.git`.
   The numeric input must remain visible and directly typeable from 0 to 255.
 - Measurement rectangles are inclusive. Edge scans compare every candidate to
   the starting pixel, not the previous pixel, so gradients cannot drift.
+- Scanner results keep decoder coordinates in the original capture space.
+  Clicking a numbered highlight shows the decoded value; only explicit
+  HTTP(S) link actions use the desktop OpenURI portal.
+- Scanner highlight color and opacity come from the version-tolerant scanner
+  settings. Hover and selection use thickness/fill changes without replacing
+  the configured color.
 
 ### Shortcut daemon
 
@@ -132,8 +145,8 @@ desktop-file-validate \
   packaging/linux/pixelkit-autostart.desktop
 ```
 
-The current unit suite has 18 tests. Add focused tests for pure coordinate,
-tiling, wheel, color, or measurement logic when changing those areas.
+Add focused tests for pure coordinate, tiling, wheel, color, code-detection, or
+measurement logic when changing those areas.
 
 On Fedora, `cargo-fmt` and `cargo-clippy` may be separately packaged. In this
 workspace, temporary extracted tools have existed under
@@ -146,6 +159,7 @@ needed:
 ```bash
 cargo run -- color-picker --image /path/to/test.png
 cargo run -- magnifier --image /path/to/test.png
+cargo run -- code-scanner --image /path/to/test.png
 cargo run -- screen-ruler --image /path/to/test.png
 ```
 
@@ -239,6 +253,7 @@ coordinate mismatch.
 ## Common traps to avoid
 
 - Do not block an egui frame on portal I/O.
+- Do not run QR/barcode detection synchronously in an egui frame.
 - Do not downscale the captured backdrop to fit one GPU texture.
 - Do not reuse a portal connection tied to a destroyed runtime.
 - Do not use smoothed scroll deltas for discrete zoom/tolerance steps.

@@ -2,10 +2,11 @@
 
 # PixelKit
 
-PixelKit is a native Linux implementation of the Microsoft PowerToys **Color
-Picker** and **Screen Ruler** workflows. It is written in Rust, ships as one
-small process-on-demand binary, stores everything locally, and supports both
-X11 and Wayland without privileged input or capture hooks.
+PixelKit is a native Linux precision-tool suite built around the Microsoft
+PowerToys **Color Picker** and **Screen Ruler** workflows, with an integrated QR
+and barcode scanner. It is written in Rust, ships as one process-on-demand
+binary, stores everything locally, and supports both X11 and Wayland without
+privileged input or capture hooks.
 
 > PixelKit is independent of Microsoft and PowerToys. PowerToys was used as the
 > MIT-licensed behavioral reference included beside this project.
@@ -41,6 +42,22 @@ https://github.com/user-attachments/assets/fd06e8b0-96c1-4ea9-b514-56c151987239
 - PowerToys-compatible custom format tokens such as `%ReX`, `%Gr`, `%Hu`,
   `%Sl`, `%Na`, and the full CIE/Oklab parameter set.
 
+### QR & Barcode Scanner
+
+- Automatically scans the original full-resolution capture without blocking
+  the overlay event loop.
+- Detects multiple codes in one image and gives every result a numbered,
+  clickable on-screen highlight.
+- Uses a configurable RGBA color and opacity for detection outlines and number
+  badges.
+- Supports QR and Micro QR, Data Matrix, Aztec, PDF417, Code 39/93/128, EAN,
+  UPC, ITF, Codabar, GS1 DataBar, Telepen, and MaxiCode.
+- Shows the decoded format and complete text, with one-click clipboard copy.
+- Recognizes HTTP(S) content and offers an explicit **Open link** action through
+  the desktop portal after the destination has been shown.
+- Recapture / `R` takes and scans a fresh snapshot without photographing the
+  PixelKit overlay.
+
 ### Screen Ruler
 
 - Bounds/rectangle measurement.
@@ -65,18 +82,18 @@ https://github.com/user-attachments/assets/fd06e8b0-96c1-4ea9-b514-56c151987239
 - A lightweight background mode that does no screen polling while idle.
 - Desktop actions, AppStream metadata, scalable and high-resolution icons, man
   page, and systemd user unit.
-- No telemetry, cloud service, network request, root helper, or setuid binary.
+- No telemetry, cloud service, root helper, or setuid binary. Code detection is
+  fully local; only an explicitly opened decoded link is handed to the desktop.
 
-The Fedora 44 x86_64 reference build is a 9.2 MB stripped executable. The X11
-shortcut daemon settles at roughly 5.6 MB RSS and blocks on events while idle;
-it does not initialize the GUI or capture a screen until a tool is launched.
+The shortcut daemon blocks on events while idle; it does not initialize the
+GUI, decoder, or screen capture until a tool is launched.
 
 ## X11 and Wayland behavior
 
 | Capability | X11 | Wayland / Flatpak |
 |---|---|---|
 | Screen capture | Immediate direct capture | Screenshot portal; the compositor may ask for permission or a target |
-| Pixel and ruler overlay | Full captured desktop | Portal snapshot scaled into a full-screen precision canvas |
+| Picker, scanner, and ruler overlays | Full captured desktop | Portal snapshot scaled into a full-screen precision canvas |
 | Global shortcuts | X11 key grab | GlobalShortcuts portal; compositor chooses/grants the final binding |
 | Continuous ruler background | Live transparent recapture | Manual **Recapture** / `R` after underlying content changes, because the Screenshot portal is intentionally request-based |
 | Clipboard | Native X11 selection | Native Wayland data control plus GUI clipboard fallback |
@@ -90,6 +107,7 @@ desktop's keyboard settings:
 ```text
 pixelkit color-picker
 pixelkit magnifier
+pixelkit code-scanner
 pixelkit screen-ruler
 ```
 
@@ -172,8 +190,14 @@ Launch `pixelkit`, or use a direct command:
 pixelkit color-picker
 pixelkit magnifier
 pixelkit color-editor
+pixelkit code-scanner
 pixelkit screen-ruler
 ```
+
+The native X11 defaults are `Super+Shift+C` for the picker,
+`Super+Shift+Z` for the magnifier, `Super+Shift+Q` for the scanner, and
+`Super+Shift+M` for the ruler. All are editable in **Background shortcuts**;
+Wayland compositors own the final assigned combinations.
 
 Enable background shortcuts for native packages:
 
@@ -268,16 +292,17 @@ cargo test --all-targets --locked
 cargo run -- formats '#ff0000'
 cargo run -- color-picker --image test-screen.png
 cargo run -- magnifier --image test-screen.png
+cargo run -- code-scanner --image test-screen.png
 cargo run -- screen-ruler --image test-screen.png
 ```
 
-The `--image` mode exercises the exact picker/magnifier/ruler UI and algorithms
-without requesting desktop capture. Multi-monitor and mixed-scale release
-testing is still recommended on both X11 and Wayland.
+The `--image` mode exercises the exact picker, magnifier, scanner, and ruler UI
+and algorithms without requesting desktop capture. Multi-monitor and
+mixed-scale release testing is still recommended on both X11 and Wayland.
 
 ## License and attribution
 
-PixelKit is MIT licensed. See [NOTICE](NOTICE) for PowerToys attribution and
-trademark clarification. Third-party Rust dependencies retain their respective
-licenses; `cargo deny`/distribution tooling can generate the final dependency
-license inventory for a release.
+PixelKit's own code is MIT licensed. See [NOTICE](NOTICE) for PowerToys and
+barcode-decoder attribution. Third-party Rust dependencies retain their
+respective licenses; `cargo deny`/distribution tooling can generate the final
+dependency license inventory for a release.

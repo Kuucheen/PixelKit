@@ -2,10 +2,10 @@
 pkgname=pixelkit
 pkgver=0.3.0
 pkgrel=1
-pkgdesc='Native Linux color picker, magnifier, and screen ruler'
+pkgdesc='Native Linux color picker, code scanner, and screen ruler'
 arch=('x86_64' 'aarch64')
 url='https://github.com/Kuucheen/PixelKit'
-license=('MIT')
+license=('MIT' 'Apache-2.0')
 depends=('libx11' 'libxcb' 'libxkbcommon' 'wayland' 'mesa' 'xdg-desktop-portal')
 makedepends=('cargo' 'git')
 optdepends=(

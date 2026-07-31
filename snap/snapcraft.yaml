@@ -1,13 +1,14 @@
 name: pixelkit
 base: core24
 version: '0.3.0'
-summary: Native Linux color picker, magnifier, and screen ruler
+summary: Native Linux color picker, code scanner, and screen ruler
 description: |
-  PixelKit provides a magnified system-wide color picker, color editor, and
-  screen ruler. X11 is captured directly; Wayland uses freedesktop portals.
+  PixelKit provides a magnified system-wide color picker, QR and barcode
+  scanner, color editor, and screen ruler. X11 is captured directly; Wayland
+  uses freedesktop portals.
 grade: stable
 confinement: strict
-license: MIT
+license: MIT AND Apache-2.0
 website: https://github.com/Kuucheen/PixelKit
 issues: https://github.com/Kuucheen/PixelKit/issues
 apps:
@@ -45,4 +46,5 @@ parts:
       install -Dm644 packaging/linux/io.github.Kuucheen.PixelKit.png "$CRAFT_PART_INSTALL/share/icons/hicolor/128x128/apps/io.github.Kuucheen.PixelKit.png"
       install -Dm644 packaging/linux/512x512/io.github.Kuucheen.PixelKit.png "$CRAFT_PART_INSTALL/share/icons/hicolor/512x512/apps/io.github.Kuucheen.PixelKit.png"
       install -Dm644 LICENSE "$CRAFT_PART_INSTALL/share/licenses/pixelkit/LICENSE"
+      install -Dm644 LICENSES/Apache-2.0.txt "$CRAFT_PART_INSTALL/share/licenses/pixelkit/Apache-2.0.txt"
       sed -i 's|Exec=pixelkit|Exec=pixelkit.pixelkit|' "$CRAFT_PART_INSTALL/share/applications/io.github.Kuucheen.PixelKit.desktop"

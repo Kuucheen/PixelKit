@@ -30,6 +30,7 @@ install: build
 	install -Dm644 packaging/linux/pixelkit.service $(DESTDIR)$(SYSTEMD_USER_UNIT_DIR)/pixelkit.service
 	install -Dm644 docs/pixelkit.1 $(DESTDIR)$(PREFIX)/share/man/man1/pixelkit.1
 	install -Dm644 LICENSE $(DESTDIR)$(PREFIX)/share/licenses/pixelkit/LICENSE
+	install -Dm644 LICENSES/Apache-2.0.txt $(DESTDIR)$(PREFIX)/share/licenses/pixelkit/Apache-2.0.txt
 	install -Dm644 NOTICE $(DESTDIR)$(PREFIX)/share/doc/pixelkit/NOTICE
 
 uninstall:
@@ -41,6 +42,9 @@ uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/share/icons/hicolor/512x512/apps/$(APP_ID).png
 	rm -f $(DESTDIR)$(SYSTEMD_USER_UNIT_DIR)/pixelkit.service
 	rm -f $(DESTDIR)$(PREFIX)/share/man/man1/pixelkit.1
+	rm -f $(DESTDIR)$(PREFIX)/share/licenses/pixelkit/LICENSE
+	rm -f $(DESTDIR)$(PREFIX)/share/licenses/pixelkit/Apache-2.0.txt
+	rm -f $(DESTDIR)$(PREFIX)/share/doc/pixelkit/NOTICE
 
 clean:
 	$(CARGO) clean

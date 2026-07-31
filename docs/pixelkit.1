@@ -1,6 +1,6 @@
 .TH PIXELKIT 1 "July 2026" "PixelKit 0.3.0" "User Commands"
 .SH NAME
-pixelkit \- Linux color picker, magnifier, and screen ruler
+pixelkit \- Linux color picker, code scanner, magnifier, and screen ruler
 .SH SYNOPSIS
 .B pixelkit
 [settings]
@@ -14,6 +14,9 @@ pixelkit \- Linux color picker, magnifier, and screen ruler
 .B pixelkit color-editor
 [--color HEX]
 .br
+.B pixelkit code-scanner
+[--image FILE.png]
+.br
 .B pixelkit screen-ruler
 [--image FILE.png]
 .br
@@ -21,8 +24,8 @@ pixelkit \- Linux color picker, magnifier, and screen ruler
 .br
 .B pixelkit configure-shortcuts
 .SH DESCRIPTION
-PixelKit is a native system-wide color picker, configurable magnifier, color
-editor, and screen ruler.
+PixelKit is a native system-wide color picker, configurable magnifier, QR and
+barcode scanner, color editor, and screen ruler.
 It uses direct X11 capture on X11 sessions and freedesktop screenshot and global
 shortcut portals on Wayland.
 .SH COMMANDS
@@ -42,6 +45,13 @@ capture behavior, and shortcut are configurable in the settings window.
 .TP
 .B color-editor
 Open color history, adjustment, format, and export tools.
+.TP
+.B code-scanner
+Capture the screen and automatically find multiple QR codes and barcodes at
+full resolution. Detected regions are numbered and clickable. The details view
+shows and copies decoded text, and can explicitly open HTTP(S) content through
+the desktop portal. Detection highlight color and opacity are configurable in
+the settings window. Use R to recapture and scan again, or Escape to close.
 .TP
 .B screen-ruler
 Open the bounds and color-edge measurement overlay.

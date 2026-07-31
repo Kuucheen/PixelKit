@@ -10,6 +10,7 @@ pub const STANDARD_PICKER_MAX_ZOOM_LEVEL: u8 = 5;
 pub const MAX_PICKER_MAX_ZOOM_LEVEL: u8 = 255;
 pub const MAX_MAGNIFIER_ZOOM_LEVEL: u8 = 255;
 pub const MAGNIFIER_GRID_SIZES: [u8; 9] = [5, 7, 9, 11, 13, 15, 17, 19, 21];
+pub const DEFAULT_SCANNER_HIGHLIGHT_COLOR: &str = "#16CFC0FF";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
@@ -274,6 +275,28 @@ impl Default for MagnifierSettings {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+pub struct ScannerSettings {
+    pub shortcut: String,
+    /// RGBA in CSS notation. Alpha is honored by detection outlines, fills,
+    /// and number badges.
+    pub highlight_color: String,
+    /// Let the portal show its target selector. This may add an extra prompt,
+    /// but is useful on multi-monitor Wayland sessions.
+    pub interactive_portal: bool,
+}
+
+impl Default for ScannerSettings {
+    fn default() -> Self {
+        Self {
+            shortcut: "Super+Shift+Q".into(),
+            highlight_color: DEFAULT_SCANNER_HIGHLIGHT_COLOR.into(),
+            interactive_portal: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct RulerSettings {
     pub shortcut: String,
     pub default_mode: RulerMode,
@@ -311,6 +334,7 @@ impl Default for RulerSettings {
 pub struct Settings {
     pub picker: PickerSettings,
     pub magnifier: MagnifierSettings,
+    pub scanner: ScannerSettings,
     pub ruler: RulerSettings,
 }
 
@@ -497,6 +521,11 @@ mod tests {
             ColorNamePosition::BelowCopiedValue
         );
         assert!(settings.picker.single_editor_instance);
+        assert_eq!(settings.scanner.shortcut, "Super+Shift+Q");
+        assert_eq!(
+            settings.scanner.highlight_color,
+            DEFAULT_SCANNER_HIGHLIGHT_COLOR
+        );
     }
 
     #[test]
@@ -523,7 +552,23 @@ mod tests {
         );
         assert!(settings.picker.single_editor_instance);
         assert_eq!(settings.magnifier.shortcut, "Super+Shift+Z");
+        assert_eq!(settings.scanner.shortcut, "Super+Shift+Q");
+        assert_eq!(
+            settings.scanner.highlight_color,
+            DEFAULT_SCANNER_HIGHLIGHT_COLOR
+        );
         assert_eq!(settings.ruler.cross_color, "#FF4500FF");
+    }
+
+    #[test]
+    fn old_scanner_settings_receive_the_default_highlight_color() {
+        let settings: Settings =
+            serde_json::from_str(r#"{"scanner":{"shortcut":"Ctrl+Alt+Q"}}"#).unwrap();
+        assert_eq!(settings.scanner.shortcut, "Ctrl+Alt+Q");
+        assert_eq!(
+            settings.scanner.highlight_color,
+            DEFAULT_SCANNER_HIGHLIGHT_COLOR
+        );
     }
 
     #[test]

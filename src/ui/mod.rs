@@ -4,6 +4,7 @@ mod loupe;
 mod magnifier;
 mod picker;
 mod ruler;
+mod scanner;
 
 use crate::{
     APP_ID, APP_NAME, capture::CaptureFrame, color::Rgb, config::STANDARD_PICKER_MAX_ZOOM_LEVEL,
@@ -20,6 +21,7 @@ pub use hub::run_hub;
 pub use magnifier::run_magnifier;
 pub use picker::run_picker;
 pub use ruler::run_ruler;
+pub use scanner::run_scanner;
 
 fn adjusted_zoom_level(current: i32, steps: i32, maximum: u8) -> i32 {
     current.saturating_add(steps).clamp(0, i32::from(maximum))
@@ -169,6 +171,68 @@ fn copy_text(ctx: &egui::Context, value: String) {
     if let Ok(mut clipboard) = arboard::Clipboard::new() {
         let _ = clipboard.set_text(value);
     }
+}
+
+#[derive(Clone, Copy)]
+enum SettingControlText {
+    Centered,
+    ComboBox,
+}
+
+fn setting_control_height(ui: &egui::Ui, text_height: f32) -> f32 {
+    let spacing = ui.spacing();
+    (text_height.max(spacing.icon_width) + spacing.button_padding.y * 2.0)
+        .max(spacing.interact_size.y)
+}
+
+/// Paints a label in a row that may also contain taller controls. Egui cannot
+/// retroactively re-center an earlier label after a later button grows the
+/// row, so reserve the control height before painting the text.
+fn centered_setting_label(
+    ui: &mut egui::Ui,
+    text: &str,
+    control_text: SettingControlText,
+) -> egui::Response {
+    let font = egui::TextStyle::Body.resolve(ui.style());
+    let color = ui.visuals().text_color();
+    let galley = ui.painter().layout_no_wrap(text.to_owned(), font, color);
+    let spacing = ui.spacing();
+    let button_padding_y = spacing.button_padding.y;
+    let control_height = setting_control_height(ui, galley.size().y);
+    let size = egui::vec2(galley.size().x.ceil(), control_height);
+    let (rect, response) = ui.allocate_exact_size(size, egui::Sense::hover());
+    response
+        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), text));
+    if ui.is_rect_visible(rect) {
+        let optical_offset = match control_text {
+            SettingControlText::Centered => 0.0,
+            // ComboBox lays out its text in an inset child UI, which places
+            // its baseline lower than controls that center their text.
+            SettingControlText::ComboBox => (button_padding_y * 0.75).round(),
+        };
+        let position = egui::pos2(
+            rect.left(),
+            rect.center().y - galley.size().y * 0.5 + optical_offset,
+        );
+        ui.painter().galley(position, galley, color);
+    }
+    response
+}
+
+fn centered_setting_spinner(ui: &mut egui::Ui) -> egui::Response {
+    let spinner_size = ui.spacing().interact_size.y;
+    let text_height = ui.text_style_height(&egui::TextStyle::Body);
+    let control_height = setting_control_height(ui, text_height);
+    let (rect, response) = ui.allocate_exact_size(
+        egui::vec2(spinner_size, control_height),
+        egui::Sense::hover(),
+    );
+    response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::ProgressIndicator));
+    egui::Spinner::new().size(spinner_size).paint_at(
+        ui,
+        egui::Rect::from_center_size(rect.center(), egui::Vec2::splat(spinner_size)),
+    );
+    response
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

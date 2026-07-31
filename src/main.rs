@@ -20,6 +20,10 @@ fn main() {
                 | "magnifier"
                 | "screen-ruler"
                 | "ruler"
+                | "code-scanner"
+                | "qr-scanner"
+                | "barcode-scanner"
+                | "scanner"
                 | "color-editor"
                 | "editor"
                 | "configure-shortcuts"
@@ -46,6 +50,9 @@ fn run() -> Result<()> {
         "color-picker" | "picker" => ui::run_picker(image_argument(&rest)?.as_deref()),
         "magnifier" => ui::run_magnifier(image_argument(&rest)?.as_deref()),
         "screen-ruler" | "ruler" => ui::run_ruler(image_argument(&rest)?.as_deref()),
+        "code-scanner" | "qr-scanner" | "barcode-scanner" | "scanner" => {
+            ui::run_scanner(image_argument(&rest)?.as_deref())
+        }
         "color-editor" | "editor" => {
             let arguments = editor_arguments(&rest)?;
             ui::run_editor(arguments.initial, arguments.view, arguments.record_initial)
@@ -146,13 +153,14 @@ fn print_help() {
     println!(
         r#"PixelKit {VERSION}
 
-Native Linux color picker, magnifier, and screen ruler.
+Native Linux color picker, magnifier, QR/barcode scanner, and screen ruler.
 
 USAGE:
     pixelkit [settings]
     pixelkit color-picker [--image FILE.png]
     pixelkit magnifier [--image FILE.png]
     pixelkit color-editor [--color HEX] [--view compact|full]
+    pixelkit code-scanner [--image FILE.png]
     pixelkit screen-ruler [--image FILE.png]
     pixelkit daemon
     pixelkit configure-shortcuts

@@ -1,5 +1,5 @@
 {
-  description = "PixelKit Linux color picker, magnifier, and screen ruler";
+  description = "PixelKit Linux color picker, code scanner, and screen ruler";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -27,6 +27,9 @@
               install -Dm644 packaging/linux/512x512/io.github.Kuucheen.PixelKit.png $out/share/icons/hicolor/512x512/apps/io.github.Kuucheen.PixelKit.png
               install -Dm644 packaging/linux/pixelkit.service $out/lib/systemd/user/pixelkit.service
               install -Dm644 docs/pixelkit.1 $out/share/man/man1/pixelkit.1
+              install -Dm644 LICENSE $out/share/licenses/pixelkit/LICENSE
+              install -Dm644 LICENSES/Apache-2.0.txt $out/share/licenses/pixelkit/Apache-2.0.txt
+              install -Dm644 NOTICE $out/share/doc/pixelkit/NOTICE
             '';
 
             postFixup = ''
@@ -35,9 +38,9 @@
             '';
 
             meta = {
-              description = "Native Linux color picker, magnifier, and screen ruler";
+              description = "Native Linux color picker, code scanner, and screen ruler";
               homepage = "https://github.com/Kuucheen/PixelKit";
-              license = pkgs.lib.licenses.mit;
+              license = with pkgs.lib.licenses; [ mit asl20 ];
               mainProgram = "pixelkit";
               platforms = pkgs.lib.platforms.linux;
             };
