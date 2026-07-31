@@ -5,7 +5,7 @@ use super::{
 use crate::{
     APP_ID, APP_NAME,
     capture::{CaptureFrame, capture_screen},
-    code_detection::{DetectedCode, SourceRect, capture_luma, detect_codes_in_luma},
+    code_detection::{DetectedCode, SourceRect, capture_luma, detect_codes_in_luma_with_updates},
     config::{DEFAULT_SCANNER_HIGHLIGHT_COLOR, Settings},
 };
 use anyhow::{Context, Result as AnyhowResult};
@@ -41,7 +41,12 @@ pub fn run_scanner(image_path: Option<&Path>) -> anyhow::Result<()> {
 }
 
 struct ScanTask {
-    receiver: Receiver<std::result::Result<Vec<DetectedCode>, String>>,
+    receiver: Receiver<ScanMessage>,
+}
+
+enum ScanMessage {
+    Progress(Vec<DetectedCode>),
+    Finished(std::result::Result<Vec<DetectedCode>, String>),
 }
 
 struct RefreshTask {
@@ -182,22 +187,35 @@ impl ScannerApp {
     }
 
     fn poll_scan(&mut self, ctx: &egui::Context) {
+        let mut latest_progress = None;
         let mut finished = None;
         if let Some(task) = &self.scan_task {
-            match task.receiver.try_recv() {
-                Ok(result) => finished = Some(result),
-                Err(TryRecvError::Disconnected) => {
-                    finished = Some(Err("the scanner worker stopped unexpectedly".into()));
+            loop {
+                match task.receiver.try_recv() {
+                    Ok(ScanMessage::Progress(codes)) => latest_progress = Some(codes),
+                    Ok(ScanMessage::Finished(result)) => {
+                        finished = Some(result);
+                        break;
+                    }
+                    Err(TryRecvError::Disconnected) => {
+                        finished = Some(Err("the scanner worker stopped unexpectedly".into()));
+                        break;
+                    }
+                    Err(TryRecvError::Empty) => break,
                 }
-                Err(TryRecvError::Empty) => {}
             }
+        }
+
+        if let Some(codes) = latest_progress {
+            self.replace_codes(codes);
+            self.warning = None;
+            ctx.request_repaint();
         }
         if let Some(result) = finished {
             self.scan_task = None;
             match result {
                 Ok(codes) => {
-                    self.codes = codes;
-                    self.selected = None;
+                    self.replace_codes(codes);
                     self.warning = None;
                 }
                 Err(error) => self.warning = Some(format!("Scan failed: {error}")),
@@ -206,6 +224,17 @@ impl ScannerApp {
         } else if self.scan_task.is_some() {
             ctx.request_repaint_after(Duration::from_millis(50));
         }
+    }
+
+    fn replace_codes(&mut self, codes: Vec<DetectedCode>) {
+        let selected = self
+            .selected
+            .and_then(|index| self.codes.get(index))
+            .cloned();
+        self.codes = codes;
+        self.selected = selected
+            .as_ref()
+            .and_then(|selected| self.codes.iter().position(|code| code == selected));
     }
 
     fn poll_link(&mut self, ctx: &egui::Context) {
@@ -269,26 +298,34 @@ impl ScannerApp {
                     .inner_margin(8)
                     .show(ui, |ui| {
                         ui.horizontal(|ui| {
-                            if self.scan_task.is_some() {
+                            let scanning = self.scan_task.is_some();
+                            if scanning {
                                 centered_setting_spinner(ui);
+                            }
+                            if self.codes.is_empty() {
                                 centered_setting_label(
                                     ui,
-                                    "Scanning full-resolution image…",
-                                    SettingControlText::Centered,
-                                );
-                            } else if self.codes.is_empty() {
-                                centered_setting_label(
-                                    ui,
-                                    "No codes found",
+                                    if scanning {
+                                        "Scanning full-resolution image…"
+                                    } else {
+                                        "No codes found"
+                                    },
                                     SettingControlText::Centered,
                                 );
                             } else {
                                 let count = self.codes.len();
                                 egui::ComboBox::from_id_salt("scanner-results")
-                                    .selected_text(format!(
-                                        "{count} code{} found",
-                                        if count == 1 { "" } else { "s" }
-                                    ))
+                                    .selected_text(if scanning {
+                                        format!(
+                                            "{count} code{} detected — scanning…",
+                                            if count == 1 { "" } else { "s" }
+                                        )
+                                    } else {
+                                        format!(
+                                            "{count} code{} found",
+                                            if count == 1 { "" } else { "s" }
+                                        )
+                                    })
                                     .show_ui(ui, |ui| {
                                         for (index, code) in self.codes.iter().enumerate() {
                                             let label = format!(
@@ -592,9 +629,11 @@ fn start_scan(frame: &CaptureFrame) -> std::result::Result<ScanTask, String> {
     thread::Builder::new()
         .name("pixelkit-code-detection".into())
         .spawn(move || {
-            let result =
-                detect_codes_in_luma(luma, width, height).map_err(|error| format!("{error:#}"));
-            let _ = sender.send(result);
+            let result = detect_codes_in_luma_with_updates(luma, width, height, |codes| {
+                let _ = sender.send(ScanMessage::Progress(codes.to_vec()));
+            })
+            .map_err(|error| format!("{error:#}"));
+            let _ = sender.send(ScanMessage::Finished(result));
         })
         .map_err(|error| format!("Could not start scanner: {error}"))?;
     Ok(ScanTask { receiver })

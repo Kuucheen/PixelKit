@@ -43,9 +43,10 @@ that way, so recapture is explicit, asynchronous, and permission-preserving.
 Captures larger than the GPU's maximum texture side are divided into lossless
 tiles for rendering; the source frame is never downscaled, so the backdrop,
 pixel sampling, measurements, and code detection all retain the screenshot's
-original resolution. Scanner decoding runs on a worker thread and returns every
-result with source-image coordinates. A dedicated multi-QR pass is merged with
-the general multi-format pass before clickable regions are painted.
+original resolution. Scanner decoding runs on a worker thread and streams
+de-duplicated result snapshots, with source-image coordinates, as recursive
+regions finish. A dedicated multi-QR pass is merged with the general
+multi-format pass, so clickable regions can appear while scanning continues.
 
 ## Edge detection
 

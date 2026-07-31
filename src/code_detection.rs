@@ -3,12 +3,15 @@
 use crate::capture::CaptureFrame;
 use anyhow::{Result, bail};
 use rxing::{
-    BarcodeFormat, BinaryBitmap, DecodeHints, Exceptions, Luma8LuminanceSource,
-    MultiUseMultiFormatReader, RXingResult,
-    common::HybridBinarizer,
-    multi::{GenericMultipleBarcodeReader, MultipleBarcodeReader, qrcode::QRCodeMultiReader},
+    BarcodeFormat, Binarizer, BinaryBitmap, DecodeHints, Luma8LuminanceSource,
+    MultiUseMultiFormatReader, RXingResult, Reader,
+    common::{HybridBinarizer, Quadrilateral},
+    multi::{MultipleBarcodeReader, qrcode::QRCodeMultiReader},
 };
 use std::collections::HashSet;
+
+const MIN_GENERIC_SCAN_DIMENSION: f32 = 100.0;
+const MAX_GENERIC_SCAN_DEPTH: u32 = 4;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SourcePoint {
@@ -85,6 +88,17 @@ pub fn detect_codes(frame: &CaptureFrame) -> Result<Vec<DetectedCode>> {
 }
 
 pub fn detect_codes_in_luma(luma: Vec<u8>, width: u32, height: u32) -> Result<Vec<DetectedCode>> {
+    detect_codes_in_luma_with_updates(luma, width, height, |_| {})
+}
+
+/// Detects codes and reports a new, de-duplicated snapshot whenever another
+/// result becomes available. The callback runs on the caller's thread.
+pub fn detect_codes_in_luma_with_updates(
+    luma: Vec<u8>,
+    width: u32,
+    height: u32,
+    mut on_update: impl FnMut(&[DetectedCode]),
+) -> Result<Vec<DetectedCode>> {
     let expected = width as usize * height as usize;
     if width == 0 || height == 0 || luma.len() != expected {
         bail!(
@@ -101,17 +115,13 @@ pub fn detect_codes_in_luma(luma: Vec<u8>, width: u32, height: u32) -> Result<Ve
     };
     let qr_luma = luma.clone();
     let geometry_luma = luma.clone();
-    let mut raw_results = Vec::new();
+    let mut progress = DetectionProgress::new(width, height, &geometry_luma, &mut on_update);
 
     {
         let source = Luma8LuminanceSource::new(luma, width, height)?;
         let mut bitmap = BinaryBitmap::new(HybridBinarizer::new(source));
-        let mut reader = GenericMultipleBarcodeReader::new(MultiUseMultiFormatReader::default());
-        match reader.decode_multiple_with_hints(&mut bitmap, &hints) {
-            Ok(results) => raw_results.extend(results),
-            Err(Exceptions::NotFoundException(_)) => {}
-            Err(error) => return Err(error.into()),
-        }
+        let mut reader = MultiUseMultiFormatReader::default();
+        decode_generic_regions(&mut reader, &mut bitmap, &hints, &mut progress, 0, 0, 0);
     }
 
     // The dedicated multi-QR detector can separate tightly grouped QR codes
@@ -122,13 +132,172 @@ pub fn detect_codes_in_luma(luma: Vec<u8>, width: u32, height: u32) -> Result<Ve
         if let Ok(results) =
             QRCodeMultiReader::default().decode_multiple_with_hints(&mut bitmap, &hints)
         {
-            raw_results.extend(results);
+            for result in results {
+                progress.qr_results.push(result);
+                progress.publish();
+            }
         }
     }
 
-    let mut codes = raw_results
+    Ok(progress.finish())
+}
+
+struct DetectionProgress<'a, F> {
+    width: u32,
+    height: u32,
+    luma: &'a [u8],
+    generic_results: Vec<RXingResult>,
+    qr_results: Vec<RXingResult>,
+    visible_codes: Vec<DetectedCode>,
+    on_update: &'a mut F,
+}
+
+impl<F: FnMut(&[DetectedCode])> DetectionProgress<'_, F> {
+    fn new<'a>(
+        width: u32,
+        height: u32,
+        luma: &'a [u8],
+        on_update: &'a mut F,
+    ) -> DetectionProgress<'a, F> {
+        DetectionProgress {
+            width,
+            height,
+            luma,
+            generic_results: Vec::new(),
+            qr_results: Vec::new(),
+            visible_codes: Vec::new(),
+            on_update,
+        }
+    }
+
+    fn publish(&mut self) {
+        let codes = collect_codes(
+            &self.generic_results,
+            &self.qr_results,
+            self.width,
+            self.height,
+            self.luma,
+        );
+        if codes != self.visible_codes {
+            self.visible_codes = codes;
+            (self.on_update)(&self.visible_codes);
+        }
+    }
+
+    fn finish(self) -> Vec<DetectedCode> {
+        self.visible_codes
+    }
+}
+
+// This follows rxing/ZXing's GenericMultipleBarcodeReader region recursion,
+// with the result publication point exposed between recursive decodes. See
+// NOTICE and LICENSES/Apache-2.0.txt for the upstream attribution and license.
+fn decode_generic_regions<B: Binarizer, F: FnMut(&[DetectedCode])>(
+    reader: &mut MultiUseMultiFormatReader,
+    image: &mut BinaryBitmap<B>,
+    hints: &DecodeHints,
+    progress: &mut DetectionProgress<'_, F>,
+    x_offset: u32,
+    y_offset: u32,
+    depth: u32,
+) {
+    if depth > MAX_GENERIC_SCAN_DEPTH {
+        return;
+    }
+
+    let Ok(mut result) = reader.decode_with_hints(image, hints) else {
+        return;
+    };
+    let result_points = result.getPoints().to_vec();
+    for point in result.getPointsMut() {
+        point.x += x_offset as f32;
+        point.y += y_offset as f32;
+    }
+    progress.generic_results.push(result);
+    progress.publish();
+
+    if result_points.is_empty() {
+        return;
+    }
+
+    let image_width = image.get_width();
+    let image_height = image.get_height();
+    let (mut min_x, mut max_x, mut min_y, mut max_y) =
+        (image_width as f32, 0.0_f32, image_height as f32, 0.0_f32);
+    for point in result_points {
+        min_x = min_x.min(point.x);
+        max_x = max_x.max(point.x);
+        min_y = min_y.min(point.y);
+        max_y = max_y.max(point.y);
+    }
+
+    if min_x > MIN_GENERIC_SCAN_DIMENSION {
+        decode_generic_regions(
+            reader,
+            &mut image.crop(0, 0, min_x as usize, image_height),
+            hints,
+            progress,
+            x_offset,
+            y_offset,
+            depth + 1,
+        );
+    }
+    if min_y > MIN_GENERIC_SCAN_DIMENSION {
+        decode_generic_regions(
+            reader,
+            &mut image.crop(0, 0, image_width, min_y as usize),
+            hints,
+            progress,
+            x_offset,
+            y_offset,
+            depth + 1,
+        );
+    }
+    if max_x < image_width as f32 - MIN_GENERIC_SCAN_DIMENSION {
+        decode_generic_regions(
+            reader,
+            &mut image.crop(
+                max_x as usize,
+                0,
+                image_width - max_x as usize,
+                image_height,
+            ),
+            hints,
+            progress,
+            x_offset + max_x as u32,
+            y_offset,
+            depth + 1,
+        );
+    }
+    if max_y < image_height as f32 - MIN_GENERIC_SCAN_DIMENSION {
+        decode_generic_regions(
+            reader,
+            &mut image.crop(
+                0,
+                max_y as usize,
+                image_width,
+                image_height - max_y as usize,
+            ),
+            hints,
+            progress,
+            x_offset,
+            y_offset + max_y as u32,
+            depth + 1,
+        );
+    }
+}
+
+fn collect_codes(
+    generic_results: &[RXingResult],
+    qr_results: &[RXingResult],
+    width: u32,
+    height: u32,
+    luma: &[u8],
+) -> Vec<DetectedCode> {
+    let mut codes = unique_generic_results(generic_results)
         .into_iter()
-        .map(|result| convert_result(result, width, height, &geometry_luma))
+        .chain(qr_results)
+        .map(|result| convert_result(result.clone(), width, height, luma))
         .collect::<Vec<_>>();
     deduplicate(&mut codes);
     codes.sort_by(|left, right| match (left.bounds, right.bounds) {
@@ -140,7 +309,59 @@ pub fn detect_codes_in_luma(luma: Vec<u8>, width: u32, height: u32) -> Result<Ve
         (None, Some(_)) => std::cmp::Ordering::Greater,
         (None, None) => left.text.cmp(&right.text),
     });
-    Ok(codes)
+    codes
+}
+
+fn unique_generic_results(results: &[RXingResult]) -> Vec<&RXingResult> {
+    results
+        .iter()
+        .enumerate()
+        .filter(|(index, result)| {
+            !results
+                .iter()
+                .skip(index + 1)
+                .any(|later| raw_results_overlap(result, later))
+        })
+        .map(|(_, result)| result)
+        .collect()
+}
+
+fn raw_results_overlap(result: &RXingResult, later: &RXingResult) -> bool {
+    if result.getPoints().len() >= 4 {
+        let quadrilateral = Quadrilateral::new(
+            result.getPoints()[0],
+            result.getPoints()[1],
+            result.getPoints()[2],
+            result.getPoints()[3],
+        );
+        if later.getPoints().len() >= 4 {
+            let later_quadrilateral = Quadrilateral::new(
+                later.getPoints()[0],
+                later.getPoints()[1],
+                later.getPoints()[2],
+                later.getPoints()[3],
+            );
+            Quadrilateral::have_intersecting_bounding_boxes(&quadrilateral, &later_quadrilateral)
+        } else {
+            later
+                .getPoints()
+                .iter()
+                .any(|point| quadrilateral.is_inside(*point))
+        }
+    } else if later.getPoints().len() >= 4 {
+        let later_quadrilateral = Quadrilateral::new(
+            later.getPoints()[0],
+            later.getPoints()[1],
+            later.getPoints()[2],
+            later.getPoints()[3],
+        );
+        later
+            .getPoints()
+            .iter()
+            .any(|point| later_quadrilateral.is_inside(*point))
+    } else {
+        later.getText() == result.getText() && later.getBarcodeFormat() == result.getBarcodeFormat()
+    }
 }
 
 fn supported_formats() -> HashSet<BarcodeFormat> {
@@ -556,7 +777,18 @@ mod tests {
         paste_matrix(&mut luma, WIDTH, HEIGHT, &qr_two, 285, 30);
         paste_matrix(&mut luma, WIDTH, HEIGHT, &code_128, 165, 280);
 
-        let codes = detect_codes_in_luma(luma, WIDTH, HEIGHT).unwrap();
+        let mut updates = Vec::new();
+        let codes = detect_codes_in_luma_with_updates(luma, WIDTH, HEIGHT, |codes| {
+            updates.push(codes.to_vec());
+        })
+        .unwrap();
+        assert_eq!(updates.last(), Some(&codes));
+        assert!(
+            updates
+                .first()
+                .is_some_and(|first| !first.is_empty() && first.len() < codes.len()),
+            "expected a partial result before the final {codes:#?}, got {updates:#?}"
+        );
         for expected in [
             "https://pixelkit.example/one",
             "second code",
