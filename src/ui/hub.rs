@@ -1,6 +1,6 @@
 use super::{
-    SettingControlText, centered_setting_label, configure_style, native_options, panel_frame,
-    rgba_hex_input, spawn_action,
+    SettingControlText, centered_setting_label, centered_setting_row, configure_style,
+    native_options, panel_frame, rgba_hex_input, spawn_action,
 };
 use crate::{
     APP_NAME, VERSION,
@@ -868,13 +868,6 @@ fn user_systemctl(arguments: &[&str]) -> Result<(), String> {
     } else {
         format!("systemctl failed: {detail}")
     })
-}
-
-fn centered_setting_row<R>(
-    ui: &mut egui::Ui,
-    add_contents: impl FnOnce(&mut egui::Ui) -> R,
-) -> egui::InnerResponse<R> {
-    ui.horizontal(add_contents)
 }
 
 fn dependent_setting_row(

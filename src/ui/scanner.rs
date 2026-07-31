@@ -1,6 +1,7 @@
 use super::{
-    SettingControlText, TiledCaptureTexture, centered_setting_label, centered_setting_spinner,
-    configure_style, copy_text, overlay_options, parse_rgba,
+    SettingControlText, TiledCaptureTexture, centered_setting_control, centered_setting_label,
+    centered_setting_row, centered_setting_spinner, configure_style, copy_text, overlay_options,
+    parse_rgba,
 };
 use crate::{
     APP_ID, APP_NAME,
@@ -297,7 +298,7 @@ impl ScannerApp {
                     .corner_radius(10)
                     .inner_margin(8)
                     .show(ui, |ui| {
-                        ui.horizontal(|ui| {
+                        centered_setting_row(ui, |ui| {
                             let scanning = self.scan_task.is_some();
                             if scanning {
                                 centered_setting_spinner(ui);
@@ -314,37 +315,39 @@ impl ScannerApp {
                                 );
                             } else {
                                 let count = self.codes.len();
-                                egui::ComboBox::from_id_salt("scanner-results")
-                                    .selected_text(if scanning {
-                                        format!(
-                                            "{count} code{} detected — scanning…",
-                                            if count == 1 { "" } else { "s" }
-                                        )
-                                    } else {
-                                        format!(
-                                            "{count} code{} found",
-                                            if count == 1 { "" } else { "s" }
-                                        )
-                                    })
-                                    .show_ui(ui, |ui| {
-                                        for (index, code) in self.codes.iter().enumerate() {
-                                            let label = format!(
-                                                "{}. {} — {}",
-                                                index + 1,
-                                                code.format,
-                                                payload_preview(&code.text, 42)
-                                            );
-                                            if ui
-                                                .selectable_label(
-                                                    self.selected == Some(index),
-                                                    label,
-                                                )
-                                                .clicked()
-                                            {
-                                                self.selected = Some(index);
+                                centered_setting_control(ui, |ui| {
+                                    egui::ComboBox::from_id_salt("scanner-results")
+                                        .selected_text(if scanning {
+                                            format!(
+                                                "{count} code{} detected — scanning…",
+                                                if count == 1 { "" } else { "s" }
+                                            )
+                                        } else {
+                                            format!(
+                                                "{count} code{} found",
+                                                if count == 1 { "" } else { "s" }
+                                            )
+                                        })
+                                        .show_ui(ui, |ui| {
+                                            for (index, code) in self.codes.iter().enumerate() {
+                                                let label = format!(
+                                                    "{}. {} — {}",
+                                                    index + 1,
+                                                    code.format,
+                                                    payload_preview(&code.text, 42)
+                                                );
+                                                if ui
+                                                    .selectable_label(
+                                                        self.selected == Some(index),
+                                                        label,
+                                                    )
+                                                    .clicked()
+                                                {
+                                                    self.selected = Some(index);
+                                                }
                                             }
-                                        }
-                                    });
+                                        });
+                                });
                             }
                             ui.separator();
                             let recapture = ui

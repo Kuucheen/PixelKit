@@ -185,6 +185,37 @@ fn setting_control_height(ui: &egui::Ui, text_height: f32) -> f32 {
         .max(spacing.interact_size.y)
 }
 
+/// Reserves a settings-control-height row before laying out its contents, so
+/// mixed labels, combo boxes, checkboxes, and buttons share one vertical
+/// center instead of growing the row after earlier widgets were positioned.
+fn centered_setting_row<R>(
+    ui: &mut egui::Ui,
+    add_contents: impl FnOnce(&mut egui::Ui) -> R,
+) -> egui::InnerResponse<R> {
+    let text_height = ui.text_style_height(&egui::TextStyle::Body);
+    let control_height = setting_control_height(ui, text_height);
+    ui.allocate_ui_with_layout(
+        egui::vec2(0.0, control_height),
+        egui::Layout::left_to_right(egui::Align::Center),
+        add_contents,
+    )
+}
+
+/// Gives a nested control the same interaction height reserved by
+/// [`centered_setting_row`]. This matters for `ComboBox`, which creates an
+/// additional horizontal child UI and otherwise positions its button low.
+fn centered_setting_control<R>(
+    ui: &mut egui::Ui,
+    add_control: impl FnOnce(&mut egui::Ui) -> R,
+) -> egui::InnerResponse<R> {
+    let text_height = ui.text_style_height(&egui::TextStyle::Body);
+    let control_height = setting_control_height(ui, text_height);
+    ui.scope(|ui| {
+        ui.spacing_mut().interact_size.y = control_height;
+        add_control(ui)
+    })
+}
+
 /// Paints a label in a row that may also contain taller controls. Egui cannot
 /// retroactively re-center an earlier label after a later button grows the
 /// row, so reserve the control height before painting the text.
@@ -564,6 +595,28 @@ mod tests {
             assert_eq!(parse_rgba_bytes(&format_rgba_hex(rgba)), Some(rgba));
         }
         assert_eq!(parse_rgba_bytes("#FF4500"), Some([255, 69, 0, 255]));
+    }
+
+    #[test]
+    fn centered_setting_row_aligns_mixed_controls() {
+        egui::__run_test_ui(|ui| {
+            ui.spacing_mut().button_padding = egui::vec2(12.0, 7.0);
+            let controls = centered_setting_row(ui, |ui| {
+                let spinner = centered_setting_spinner(ui);
+                let combo = centered_setting_control(ui, |ui| {
+                    egui::ComboBox::from_id_salt("centered-combo-test")
+                        .selected_text("Detected codes")
+                        .show_ui(ui, |_| {})
+                        .response
+                })
+                .inner;
+                let button = ui.button("Close");
+                (spinner.rect, combo.rect, button.rect)
+            });
+            let (spinner, combo, button) = controls.inner;
+            assert!((spinner.center().y - combo.center().y).abs() <= 0.5);
+            assert!((button.center().y - combo.center().y).abs() <= 0.5);
+        });
     }
 
     #[test]
