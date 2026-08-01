@@ -2,6 +2,13 @@
 
 # PixelKit
 
+[![Latest release](https://img.shields.io/github/v/release/Kuucheen/PixelKit?style=flat&logo=github&label=release)](https://github.com/Kuucheen/PixelKit/releases/latest)
+[![CI status](https://img.shields.io/github/actions/workflow/status/Kuucheen/PixelKit/ci.yml?branch=main&style=flat&label=CI&logo=github)](https://github.com/Kuucheen/PixelKit/actions/workflows/ci.yml?query=branch%3Amain)
+[![GitHub stars](https://img.shields.io/github/stars/Kuucheen/PixelKit?style=flat&logo=github)](https://github.com/Kuucheen/PixelKit/stargazers)
+[![MIT license](https://img.shields.io/github/license/Kuucheen/PixelKit?style=flat)](LICENSE)
+[![Rust 1.88+](https://img.shields.io/badge/Rust-1.88%2B-000000?style=flat&logo=rust&logoColor=white)](Cargo.toml)
+[![Linux: X11 + Wayland](https://img.shields.io/badge/Linux-X11%20%2B%20Wayland-FCC624?style=flat&logo=linux&logoColor=black)](#x11-and-wayland-behavior)
+
 PixelKit is a native Linux precision-tool suite built around the Microsoft
 PowerToys **Color Picker** and **Screen Ruler** workflows, with an integrated QR
 and barcode scanner. It is written in Rust, ships as one process-on-demand
