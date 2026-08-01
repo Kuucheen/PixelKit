@@ -6,12 +6,18 @@ use rxing::{
     BarcodeFormat, Binarizer, BinaryBitmap, DecodeHints, Luma8LuminanceSource,
     MultiUseMultiFormatReader, RXingResult, Reader,
     common::{HybridBinarizer, Quadrilateral},
-    multi::{MultipleBarcodeReader, qrcode::QRCodeMultiReader},
+    multi::{
+        MultipleBarcodeReader,
+        qrcode::{QRCodeMultiReader, detector::MultiFinderPatternFinder},
+    },
+    qrcode::{QRCodeReader, detector::FinderPatternInfo},
 };
 use std::collections::HashSet;
 
 const MIN_GENERIC_SCAN_DIMENSION: f32 = 100.0;
 const MAX_GENERIC_SCAN_DEPTH: u32 = 4;
+const FINDER_PATTERN_MARGIN_MODULES: f32 = 8.0;
+const MAX_LOCAL_QR_CANDIDATES: usize = 400;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SourcePoint {
@@ -129,9 +135,31 @@ pub fn detect_codes_in_luma_with_updates(
     {
         let source = Luma8LuminanceSource::new(qr_luma, width, height)?;
         let mut bitmap = BinaryBitmap::new(HybridBinarizer::new(source));
-        if let Ok(results) =
-            QRCodeMultiReader::default().decode_multiple_with_hints(&mut bitmap, &hints)
-        {
+        let candidate_regions = local_qr_candidate_regions(&bitmap, &hints, width, height);
+
+        // On a dense screen the multi-reader can combine finder patterns from
+        // neighboring thumbnails. Decode the smallest plausible QR regions
+        // independently first, while keeping every crop at source resolution.
+        let mut local_reader = QRCodeReader;
+        for region in candidate_regions {
+            let mut cropped = bitmap.crop(
+                region.left as usize,
+                region.top as usize,
+                region.width as usize,
+                region.height as usize,
+            );
+            let Ok(mut result) = local_reader.decode_with_hints(&mut cropped, &hints) else {
+                continue;
+            };
+            offset_result_points(&mut result, region.left, region.top);
+            progress.qr_results.push(result);
+            progress.publish();
+        }
+
+        // Retain the whole-image multi pass for unusually large or overlapping
+        // codes and for its structured-append handling.
+        let mut multi_reader = QRCodeMultiReader::default();
+        if let Ok(results) = multi_reader.decode_multiple_with_hints(&mut bitmap, &hints) {
             for result in results {
                 progress.qr_results.push(result);
                 progress.publish();
@@ -140,6 +168,113 @@ pub fn detect_codes_in_luma_with_updates(
     }
 
     Ok(progress.finish())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct ScanRegion {
+    left: u32,
+    top: u32,
+    width: u32,
+    height: u32,
+}
+
+fn local_qr_candidate_regions<B: Binarizer>(
+    bitmap: &BinaryBitmap<B>,
+    hints: &DecodeHints,
+    width: u32,
+    height: u32,
+) -> Vec<ScanRegion> {
+    let Ok(infos) = MultiFinderPatternFinder::new(bitmap.get_black_matrix(), None).findMulti(hints)
+    else {
+        return Vec::new();
+    };
+
+    let mut regions = infos
+        .iter()
+        .filter_map(|info| finder_pattern_region(info, width, height))
+        .collect::<Vec<_>>();
+    regions.sort_by_key(|region| {
+        (
+            u64::from(region.width) * u64::from(region.height),
+            region.top,
+            region.left,
+        )
+    });
+    let mut seen = HashSet::new();
+    regions.retain(|region| seen.insert(*region));
+    regions.truncate(MAX_LOCAL_QR_CANDIDATES);
+    regions
+}
+
+fn finder_pattern_region(info: &FinderPatternInfo, width: u32, height: u32) -> Option<ScanRegion> {
+    let bottom_left = rxing::Point::from(info.getBottomLeft());
+    let top_left = rxing::Point::from(info.getTopLeft());
+    let top_right = rxing::Point::from(info.getTopRight());
+    let bottom_right = rxing::Point {
+        x: bottom_left.x + top_right.x - top_left.x,
+        y: bottom_left.y + top_right.y - top_left.y,
+    };
+    let points = [bottom_left, top_left, top_right, bottom_right];
+    if points
+        .iter()
+        .any(|point| !point.x.is_finite() || !point.y.is_finite())
+    {
+        return None;
+    }
+
+    let module_size = [
+        info.getBottomLeft().getEstimatedModuleSize(),
+        info.getTopLeft().getEstimatedModuleSize(),
+        info.getTopRight().getEstimatedModuleSize(),
+    ]
+    .into_iter()
+    .sum::<f32>()
+        / 3.0;
+    if !module_size.is_finite() || module_size <= 0.0 {
+        return None;
+    }
+    let padding = module_size * FINDER_PATTERN_MARGIN_MODULES;
+    let left = (points
+        .iter()
+        .map(|point| point.x)
+        .fold(f32::INFINITY, f32::min)
+        - padding)
+        .floor()
+        .clamp(0.0, width as f32) as u32;
+    let top = (points
+        .iter()
+        .map(|point| point.y)
+        .fold(f32::INFINITY, f32::min)
+        - padding)
+        .floor()
+        .clamp(0.0, height as f32) as u32;
+    let right = (points
+        .iter()
+        .map(|point| point.x)
+        .fold(f32::NEG_INFINITY, f32::max)
+        + padding)
+        .ceil()
+        .clamp(0.0, width as f32) as u32;
+    let bottom = (points
+        .iter()
+        .map(|point| point.y)
+        .fold(f32::NEG_INFINITY, f32::max)
+        + padding)
+        .ceil()
+        .clamp(0.0, height as f32) as u32;
+    (right > left && bottom > top).then_some(ScanRegion {
+        left,
+        top,
+        width: right - left,
+        height: bottom - top,
+    })
+}
+
+fn offset_result_points(result: &mut RXingResult, x_offset: u32, y_offset: u32) {
+    for point in result.getPointsMut() {
+        point.x += x_offset as f32;
+        point.y += y_offset as f32;
+    }
 }
 
 struct DetectionProgress<'a, F> {
@@ -294,9 +429,9 @@ fn collect_codes(
     height: u32,
     luma: &[u8],
 ) -> Vec<DetectedCode> {
-    let mut codes = unique_generic_results(generic_results)
-        .into_iter()
-        .chain(qr_results)
+    let mut codes = qr_results
+        .iter()
+        .chain(unique_generic_results(generic_results))
         .map(|result| convert_result(result.clone(), width, height, luma))
         .collect::<Vec<_>>();
     deduplicate(&mut codes);
@@ -808,6 +943,50 @@ mod tests {
             .unwrap();
         assert!(barcode.top <= 283.0, "{barcode:?}");
         assert!(barcode.bottom >= 389.0, "{barcode:?}");
+    }
+
+    #[test]
+    fn detects_dense_qr_grid_without_cross_matching_finders() {
+        const WIDTH: u32 = 800;
+        const HEIGHT: u32 = 400;
+        const COLUMNS: u32 = 4;
+        const ROWS: u32 = 2;
+        const CODE_SIZE: i32 = 150;
+        const STEP_X: u32 = 195;
+        const STEP_Y: u32 = 195;
+
+        let writer = MultiFormatWriter;
+        let mut luma = vec![242; WIDTH as usize * HEIGHT as usize];
+        let mut expected = Vec::new();
+        for row in 0..ROWS {
+            for column in 0..COLUMNS {
+                let index = row * COLUMNS + column;
+                let text = format!(
+                    "https://pixelkit.example/{index}/{}",
+                    "x".repeat(index as usize * 2)
+                );
+                let qr = writer
+                    .encode(&text, &BarcodeFormat::QR_CODE, CODE_SIZE, CODE_SIZE)
+                    .unwrap();
+                paste_matrix(
+                    &mut luma,
+                    WIDTH,
+                    HEIGHT,
+                    &qr,
+                    15 + column * STEP_X,
+                    15 + row * STEP_Y,
+                );
+                expected.push(text);
+            }
+        }
+
+        let codes = detect_codes_in_luma(luma, WIDTH, HEIGHT).unwrap();
+        for text in expected {
+            assert!(
+                codes.iter().any(|code| code.text == text),
+                "missing {text:?} in {codes:#?}"
+            );
+        }
     }
 
     fn paste_matrix(
