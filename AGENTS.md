@@ -22,7 +22,7 @@ Picker and Screen Ruler workflows. Preserve these properties:
 - The stable publication/application ID is
   `io.github.Kuucheen.PixelKit`. Do not rename it after publication.
 
-The code uses Rust edition 2024, MSRV 1.88, and eframe/egui 0.31 with the Glow
+The code uses Rust edition 2024, MSRV 1.88, and eframe/egui 0.33 with the Glow
 renderer. The upstream repository is `git@github.com:Kuucheen/PixelKit.git`.
 
 ## Source map

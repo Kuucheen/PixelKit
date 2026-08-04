@@ -307,19 +307,19 @@ impl EditorApp {
             ui.menu_button("Export history", |ui| {
                 if ui.button("JSON grouped by color").clicked() {
                     self.export(false, false);
-                    ui.close_menu();
+                    ui.close();
                 }
                 if ui.button("JSON grouped by format").clicked() {
                     self.export(true, false);
-                    ui.close_menu();
+                    ui.close();
                 }
                 if ui.button("Text grouped by color").clicked() {
                     self.export(false, true);
-                    ui.close_menu();
+                    ui.close();
                 }
                 if ui.button("Text grouped by format").clicked() {
                     self.export(true, true);
-                    ui.close_menu();
+                    ui.close();
                 }
             });
             if ui.button("Compact view").clicked() {

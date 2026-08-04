@@ -25,7 +25,7 @@ parts:
   pixelkit:
     plugin: rust
     source: .
-    rust-channel: '1.92'
+    rust-channel: '1.97.1'
     build-packages:
       - gcc
       - libx11-dev

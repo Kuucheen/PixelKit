@@ -50,7 +50,7 @@ jobs:
           ref: ${{ needs.validate.outputs.tag }}
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: '1.92'
+          toolchain: '1.97.1'
       - uses: Swatinem/rust-cache@v2
       - name: Install native and Debian package tools
         run: |

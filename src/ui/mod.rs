@@ -495,7 +495,7 @@ fn rgba_color_picker_button(ui: &mut egui::Ui, rgba: &mut [u8; 4]) -> egui::Resp
     });
 
     let popup_id = response.id.with("popup");
-    let open = ui.memory(|memory| memory.is_popup_open(popup_id));
+    let open = egui::Popup::is_id_open(ui.ctx(), popup_id);
     if ui.is_rect_visible(rect) {
         let visuals = if open {
             &ui.visuals().widgets.open
@@ -512,10 +512,6 @@ fn rgba_color_picker_button(ui: &mut egui::Ui, rgba: &mut [u8; 4]) -> egui::Resp
         );
     }
 
-    if response.clicked() {
-        ui.memory_mut(|memory| memory.toggle_popup(popup_id));
-    }
-
     let state_id = response.id.with("hsva");
     let mut hsva = ui.ctx().data_mut(|data| {
         data.get_temp::<RgbaPickerState>(state_id)
@@ -524,36 +520,25 @@ fn rgba_color_picker_button(ui: &mut egui::Ui, rgba: &mut [u8; 4]) -> egui::Resp
             .unwrap_or_else(|| egui::ecolor::Hsva::from_srgba_unmultiplied(*rgba))
     });
 
-    if ui.memory(|memory| memory.is_popup_open(popup_id)) {
-        let area_response = egui::Area::new(popup_id)
-            .kind(egui::UiKind::Picker)
-            .order(egui::Order::Foreground)
-            .fixed_pos(response.rect.max)
-            .show(ui.ctx(), |ui| {
-                ui.spacing_mut().slider_width = CONTENT_WIDTH;
-                ui.spacing_mut().interact_size.x = CHANNEL_WIDTH;
-                ui.spacing_mut().button_padding.x = 6.0;
-                ui.spacing_mut().item_spacing.x = 6.0;
-                ui.style_mut().drag_value_text_style = egui::TextStyle::Monospace;
-                egui::Frame::popup(ui.style()).show(ui, |ui| {
-                    if egui::color_picker::color_picker_hsva_2d(
-                        ui,
-                        &mut hsva,
-                        egui::color_picker::Alpha::OnlyBlend,
-                    ) {
-                        response.mark_changed();
-                    }
-                });
-            })
-            .response;
-
-        if !response.clicked()
-            && (ui.input(|input| input.key_pressed(egui::Key::Escape))
-                || area_response.clicked_elsewhere())
-        {
-            ui.memory_mut(|memory| memory.close_popup());
-        }
-    }
+    egui::Popup::from_toggle_button_response(&response)
+        .id(popup_id)
+        .kind(egui::PopupKind::Popup)
+        .info(egui::UiStackInfo::new(egui::UiKind::Picker))
+        .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+        .show(|ui| {
+            ui.spacing_mut().slider_width = CONTENT_WIDTH;
+            ui.spacing_mut().interact_size.x = CHANNEL_WIDTH;
+            ui.spacing_mut().button_padding.x = 6.0;
+            ui.spacing_mut().item_spacing.x = 6.0;
+            ui.style_mut().drag_value_text_style = egui::TextStyle::Monospace;
+            if egui::color_picker::color_picker_hsva_2d(
+                ui,
+                &mut hsva,
+                egui::color_picker::Alpha::OnlyBlend,
+            ) {
+                response.mark_changed();
+            }
+        });
 
     if response.changed() {
         *rgba = hsva.to_srgba_unmultiplied();
