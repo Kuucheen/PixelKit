@@ -26,7 +26,7 @@ jobs:
     outputs:
       tag: ${{ steps.version.outputs.tag }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.RELEASE_TAG }}
       - name: Verify tag and package version
@@ -45,7 +45,7 @@ jobs:
     needs: validate
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.tag }}
       - uses: dtolnay/rust-toolchain@stable
@@ -82,7 +82,7 @@ jobs:
           dnf install -y rust cargo gcc make rpm-build xz python3 git-core \
             diffutils libX11-devel libxcb-devel libxkbcommon-devel \
             wayland-devel
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.tag }}
       - name: Build RPM artifacts
