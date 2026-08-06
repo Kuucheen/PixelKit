@@ -12,7 +12,7 @@
         let pkgs = nixpkgs.legacyPackages.${system}; in {
           default = pkgs.rustPlatform.buildRustPackage {
             pname = "pixelkit";
-            version = "0.4.0";
+            version = "0.4.1";
             src = self;
             cargoLock.lockFile = ./Cargo.lock;
 

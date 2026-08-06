@@ -1,5 +1,5 @@
 Name:           pixelkit
-Version:        0.4.0
+Version:        0.4.1
 Release:        0
 Summary:        Native Linux color picker, code scanner, and screen ruler
 License:        MIT AND Apache-2.0
@@ -53,6 +53,9 @@ make install DESTDIR=%{buildroot} PREFIX=%{_prefix} CARGO="cargo --offline"
 %{_mandir}/man1/pixelkit.1%{?ext_man}
 
 %changelog
+* Fri Aug 07 2026 PixelKit contributors <70746714+Kuucheen@users.noreply.github.com> - 0.4.1-0
+- Release PixelKit 0.4.1
+
 * Wed Aug 05 2026 PixelKit contributors <70746714+Kuucheen@users.noreply.github.com> - 0.4.0-0
 - Release PixelKit 0.4.0
 
