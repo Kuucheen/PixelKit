@@ -2718,9 +2718,23 @@
   {
     "type": "archive",
     "archive-type": "tar-gzip",
+    "url": "https://static.crates.io/crates/x11rb/x11rb-0.14.0.crate",
+    "sha256": "5a8885a854a8bfdf87a301e53e41b17c5f8f33639903131338b997b1eb614f44",
+    "dest": "cargo/vendor/x11rb-0.14.0"
+  },
+  {
+    "type": "archive",
+    "archive-type": "tar-gzip",
     "url": "https://static.crates.io/crates/x11rb-protocol/x11rb-protocol-0.13.2.crate",
     "sha256": "ea6fc2961e4ef194dcbfe56bb845534d0dc8098940c7e5c012a258bfec6701bd",
     "dest": "cargo/vendor/x11rb-protocol-0.13.2"
+  },
+  {
+    "type": "archive",
+    "archive-type": "tar-gzip",
+    "url": "https://static.crates.io/crates/x11rb-protocol/x11rb-protocol-0.14.0.crate",
+    "sha256": "acf4d1bc32aa46eec18caa634ec3cf4c05bfa151f12b93b510b15190f69a1ca8",
+    "dest": "cargo/vendor/x11rb-protocol-0.14.0"
   },
   {
     "type": "archive",
