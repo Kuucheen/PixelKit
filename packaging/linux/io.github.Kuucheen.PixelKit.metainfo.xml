@@ -56,6 +56,11 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.4.0" date="2026-08-05">
+      <description>
+        <p>PixelKit 0.4.0 upstream release.</p>
+      </description>
+    </release>
     <release version="0.3.0" date="2026-07-28">
       <description>
         <p>PixelKit 0.3.0 upstream release.</p>

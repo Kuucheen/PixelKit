@@ -1,6 +1,6 @@
 name: pixelkit
 base: core24
-version: '0.3.0'
+version: '0.4.0'
 summary: Native Linux color picker, code scanner, and screen ruler
 description: |
   PixelKit provides a magnified system-wide color picker, QR and barcode
