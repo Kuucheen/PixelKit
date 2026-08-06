@@ -72,6 +72,12 @@ renderer. The upstream repository is `git@github.com:Kuucheen/PixelKit.git`.
 - Wayland deliberately forbids silent global capture and key grabs. Do not add
   compositor-specific bypasses. Screenshot permission/selection dialogs are
   expected behavior.
+- Keep ashpd on its `async-io` feature while the lockfile uses zbus 5.18.
+  Enabling `ashpd/tokio` makes Cargo unify zbus's Tokio and async-io features;
+  zbus 5.18 then selects Tokio from AccessKit's non-Tokio worker and the
+  release process aborts. Re-evaluate this only after the additive-runtime
+  zbus fix is available in a released crate and both startup paths are smoke
+  tested again.
 - Each screenshot request creates its own `ashpd::zbus::Connection::session()`
   and best-effort registers `APP_ID`. Do not use ashpd's process-global cached
   connection from a short-lived Tokio runtime: a later recapture can inherit a

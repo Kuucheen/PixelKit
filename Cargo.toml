@@ -13,9 +13,13 @@ categories = ["gui", "multimedia::images"]
 [dependencies]
 anyhow = "1.0"
 arboard = { version = "3.6", default-features = false, features = ["wayland-data-control"] }
-# `documents` also activates ashpd's serde-repr dependency, which its 0.13
-# screenshot feature uses for the portal target flags.
-ashpd = { version = "0.13", default-features = false, features = ["tokio", "documents", "global_shortcuts", "open_uri", "screenshot"] }
+# Keep ashpd and AccessKit on zbus's async-io backend. zbus 5.18 selects its
+# Tokio backend whenever Cargo unifies both runtime features, but AccessKit's
+# worker is not running inside a Tokio runtime and consequently panics at
+# startup. PixelKit can still poll ashpd's runtime-independent futures from its
+# own Tokio runtimes. `documents` also activates ashpd's serde-repr dependency,
+# which its 0.13 screenshot feature uses for the portal target flags.
+ashpd = { version = "0.13", default-features = false, features = ["async-io", "documents", "global_shortcuts", "open_uri", "screenshot"] }
 directories = "6.0"
 eframe = { version = "=0.33.3", default-features = false, features = ["accesskit", "default_fonts", "glow", "wayland", "x11"] }
 futures-util = "0.3"
